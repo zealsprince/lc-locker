@@ -16,7 +16,7 @@ namespace Locker
             string
         >()
         {
-            // {},
+            { "locker", "assets/exported/locker/enemies/lockerai.prefab" },
         };
 
         public enum LoadStatusCode : ushort

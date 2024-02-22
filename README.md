@@ -1,10 +1,12 @@
 
-<img src="https://img.shields.io/badge/version-0.1.0-0AF" /></a>
+<img src="https://img.shields.io/badge/version-0.2.0-0AF" /></a>
 <img src="https://img.shields.io/badge/lc--version-v49-000" /></a>
 
-# This is a placeholder at the moment #
+![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
 
-No looking!
+# This is an in development mod #
+
+Feel free to look around but nothing is in-game yet.
 
 # The Locker #
 

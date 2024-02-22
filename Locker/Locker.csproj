@@ -230,6 +230,7 @@
   <ItemGroup>
     <Compile Include="Assets.cs" />
     <Compile Include="Config.cs" />
+    <Compile Include="MonoBehaviours\LockerAI.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
