@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
 using GameNetcodeStuff;
+using LethalLib.Modules;
 using UnityEngine;
 using UnityEngine.VFX;
+using static Unity.Collections.AllocatorManager;
 
 namespace Locker.MonoBehaviours
 {
@@ -62,7 +64,7 @@ namespace Locker.MonoBehaviours
 
         // Momentary speed values of the enemy.
         private float currentSpeed = 0f;
-        private readonly float maxSpeed = .75f;
+        private readonly float maxSpeed = 1f;
 
         // Current eye color and intensity.
         private Color currentEyeColor = eyeColorDormant;
@@ -165,19 +167,27 @@ namespace Locker.MonoBehaviours
             PlayerControllerB closestPlayer = GetClosestPlayer(true, true, true);
             if (closestPlayer != null)
             {
-                // If their flashlight is out and activate. Chase.
-                if (closestPlayer.pocketedFlashlight.isBeingUsed)
+                // Check if the player has the pocket flashlight.
+                if (closestPlayer.pocketedFlashlight != null)
                 {
-                    // Make sure to only chase when the player is shining their flashlight at the Locker.
-                    Vector3 directionToLocker =
-                        transform.position - closestPlayer.transform.position;
-                    float angle = Vector3.Angle(transform.forward, directionToLocker);
-
-                    if (Mathf.Abs(angle) < closestPlayer.gameplayCamera.fieldOfView)
+                    // If their flashlight is out and activate. Chase.
+                    if (closestPlayer.pocketedFlashlight.isBeingUsed)
                     {
-                        Target(closestPlayer.transform.position);
+                        // Make sure to only chase when the player is shining their flashlight at the Locker.
+                        Vector3 directionToLocker =
+                            transform.position - closestPlayer.transform.position;
+                        float angle = Vector3.Angle(
+                            closestPlayer.transform.forward,
+                            directionToLocker
+                        );
+
+                        if (Mathf.Abs(angle) < closestPlayer.gameplayCamera.fieldOfView)
+                        {
+                            Target(closestPlayer.transform.position);
+                        }
                     }
                 }
+                else if (closestPlayer.isHoldingObject) { }
             }
         }
 
@@ -391,12 +401,26 @@ namespace Locker.MonoBehaviours
             {
                 case LockerState.Dormant: // We were touched by a player, target their position.
                     if (collision.gameObject.GetComponent<PlayerControllerB>())
+                    {
+                        Plugin.logger.LogDebug(
+                            $"Player ${collision.gameObject.name} collided with me!"
+                        );
+
                         Target(collision.transform.position);
+                    }
+                    else
+                    {
+                        Plugin.logger.LogDebug($"I collided with ${collision.gameObject.name}!");
+                    }
 
                     break;
 
                 default:
                     break;
+            }
+
+            {
+                Plugin.logger.LogDebug($"I collided with ${collision.gameObject.name}!");
             }
         }
 
@@ -557,7 +581,10 @@ namespace Locker.MonoBehaviours
 
         public void Target(Vector3 position)
         {
-            if (position.y - transform.position.y > 2 || position.y - transform.position.y < 0) // Don't target entities higher or lower.
+            if (
+                Mathf.Abs(position.y - transform.position.y) > 3
+                || Mathf.Abs(position.y - transform.position.y) < 0
+            ) // Don't target entities higher or lower.
                 return;
 
             position.y = transform.position.y; // Make sure we don't change in elevation.
@@ -590,16 +617,34 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        public void PlayerScan(GameObject player)
+        public void PlayerScan(PlayerControllerB player)
         {
             // Only allowing activation during the dormant state.
             if (state == LockerState.Dormant || state == LockerState.Debug)
             {
-                if (HasLineOfSightToPosition(player.transform.position))
+                if ( // Make a raycast to the player checking if they're visible.
+                    Vector3.Distance(transform.position, player.transform.position) < 90
+                    && !Physics.Linecast(
+                        transform.position,
+                        player.transform.position,
+                        StartOfRound.Instance.collidersAndRoomMask
+                    )
+                )
                 {
-                    currentEyeColor = eyeColorScan;
+                    // Make sure to only chase when the player is scanning at the Locker.
+                    Vector3 directionToLocker = transform.position - player.transform.position;
+                    float angle = Vector3.Angle(player.transform.forward, directionToLocker);
 
-                    Target(player.transform.position);
+                    if (Mathf.Abs(angle) < player.gameplayCamera.fieldOfView)
+                    {
+                        currentEyeColor = eyeColorScan;
+
+                        Target(player.transform.position);
+                    }
+                }
+                else
+                {
+                    Plugin.logger.LogDebug("Raycast hit something.");
                 }
             }
         }

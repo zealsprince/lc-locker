@@ -1,7 +1,9 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
-using LethalLib;
+using HarmonyLib;
+using LethalLib.Modules;
+using UnityEngine;
 
 namespace Locker
 {
@@ -16,6 +18,8 @@ namespace Locker
         public static ManualLogSource logger;
         public static ConfigFile config;
 
+        private readonly Harmony harmony = new Harmony(ModGUID);
+
         private void Awake()
         {
             logger = Logger;
@@ -26,6 +30,23 @@ namespace Locker
             // Make sure asset loading is completed successfully and abort otherwise.
             if (Assets.Load() != Assets.LoadStatusCode.Success)
                 return;
+
+            EnemyType lockerEnemy = Assets.Bundle.LoadAsset<EnemyType>(
+                "assets/exported/locker/enemies/lockerenemy.asset"
+            );
+
+            NetworkPrefabs.RegisterNetworkPrefab(lockerEnemy.enemyPrefab);
+
+            Enemies.RegisterEnemy(
+                lockerEnemy,
+                25,
+                Levels.LevelTypes.All,
+                Enemies.SpawnType.Default,
+                new TerminalNode(),
+                new TerminalKeyword()
+            );
+
+            harmony.PatchAll();
         }
     }
 }

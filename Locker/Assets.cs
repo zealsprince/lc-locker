@@ -16,7 +16,8 @@ namespace Locker
             string
         >()
         {
-            { "locker", "assets/exported/locker/enemies/lockerai.prefab" },
+            { "locker", "assets/exported/locker/enemies/locker.prefab" },
+            { "lockerenemy", "assets/exported/locker/enemies/lockerenemy.asset" },
         };
 
         public enum LoadStatusCode : ushort
@@ -49,7 +50,7 @@ namespace Locker
 
             foreach (string asset in Bundle.GetAllAssetNames())
             {
-                Plugin.logger.LogDebug($"Loaded asset: {asset}");
+                Plugin.logger.LogDebug($"Found asset: {asset}");
             }
 
             // Iterate over our manifest and load the assets.
@@ -93,6 +94,20 @@ namespace Locker
             }
 
             return null;
+        }
+
+        public static GameObject Get(string name)
+        {
+            if (Prefabs.ContainsKey(name))
+            {
+                return Prefabs[name];
+
+                // item.GetComponent<NetworkObject>().Spawn();
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 }

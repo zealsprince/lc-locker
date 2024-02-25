@@ -231,12 +231,14 @@
     <Compile Include="Assets.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="MonoBehaviours\LockerAI.cs" />
+    <Compile Include="Patches\HUDManagerPatches.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>xcopy /y "$(ProjectDir)bin\$(ProjectName).dll" "E:\Lethal Company IDE\BepInEx\plugins\zealsprince-Locker"</PostBuildEvent>
