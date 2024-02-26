@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using GameNetcodeStuff;
 using LethalLib.Modules;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.VFX;
-using static Unity.Collections.AllocatorManager;
 
 namespace Locker.MonoBehaviours
 {
@@ -18,6 +19,8 @@ namespace Locker.MonoBehaviours
             Resetting = 4,
             Consuming = 5,
         }
+
+        public static readonly int CreatureID = 176;
 
         // Make definitions for the eye colors.
         private static readonly Color eyeColorDormant = Color.black;
@@ -89,8 +92,17 @@ namespace Locker.MonoBehaviours
         private float resetTimer = 0f;
         private readonly float resetDuration = 1f;
 
+        // These variables will keep track if the player has scanned and if we're performing the distance timeout.
+        private PlayerControllerB playerScanning;
+        private bool playerScanned = false;
+        private float playerScannedTimer = 0f;
+        private float playerScannedDuration = 0f;
+
+        private Vector3 lastPosition = Vector3.zero;
+
+        [Header("Locker")]
         // Store the current state publicly so I can switch it in the inspector.
-        public LockerState state;
+        public LockerState State;
         public bool DebugToCamera = false;
 
         public AudioClip AudioClipPing;
@@ -163,31 +175,36 @@ namespace Locker.MonoBehaviours
         {
             base.DoAIInterval();
 
-            // Get the closest player if possible.
-            PlayerControllerB closestPlayer = GetClosestPlayer(true, true, true);
-            if (closestPlayer != null)
+            switch (State)
             {
-                // Check if the player has the pocket flashlight.
-                if (closestPlayer.pocketedFlashlight != null)
-                {
-                    // If their flashlight is out and activate. Chase.
-                    if (closestPlayer.pocketedFlashlight.isBeingUsed)
+                case LockerState.Dormant:
+                    // Get the closest player if possible.
+                    PlayerControllerB closestPlayer = GetClosestPlayer(true, true, true);
+                    if (closestPlayer != null)
                     {
-                        // Make sure to only chase when the player is shining their flashlight at the Locker.
-                        Vector3 directionToLocker =
-                            transform.position - closestPlayer.transform.position;
-                        float angle = Vector3.Angle(
-                            closestPlayer.transform.forward,
-                            directionToLocker
-                        );
-
-                        if (Mathf.Abs(angle) < closestPlayer.gameplayCamera.fieldOfView)
+                        // Check if the player has the pocket flashlight.
+                        if (closestPlayer.pocketedFlashlight != null)
                         {
-                            Target(closestPlayer.transform.position);
+                            // If their flashlight is out and activate. Chase.
+                            if (closestPlayer.pocketedFlashlight.isBeingUsed)
+                            {
+                                // Make sure to only chase when the player is shining their flashlight at the Locker.
+                                Vector3 directionToLocker =
+                                    transform.position - closestPlayer.transform.position;
+                                float angle = Vector3.Angle(
+                                    closestPlayer.transform.forward,
+                                    directionToLocker
+                                );
+
+                                // Check if the Locker is in the middle 45 degree range of the players view (as in they're shining on it)
+                                if (Mathf.Abs(angle) < 45)
+                                {
+                                    TargetServerRpc(closestPlayer.transform.position);
+                                }
+                            }
                         }
                     }
-                }
-                else if (closestPlayer.isHoldingObject) { }
+                    break;
             }
         }
 
@@ -199,18 +216,18 @@ namespace Locker.MonoBehaviours
             {
                 DebugToCamera = false;
 
-                Target(Camera.main.transform.position);
+                TargetServerRpc(Camera.main.transform.position);
             }
             // Override in case I want to manually change states through the inspector.
-            if (state != lastState)
+            if (State != lastState)
             {
-                SwitchState(state);
+                SwitchState(State);
 
-                lastState = state;
+                lastState = State;
             }
 
             // Handle over-time state changes.
-            switch (state)
+            switch (State)
             {
                 case LockerState.Dormant:
                     // Fade out eye.
@@ -341,8 +358,41 @@ namespace Locker.MonoBehaviours
         private void FixedUpdate()
         {
             // Handle logic and required state changes.
-            switch (state)
+            switch (State)
             {
+                case LockerState.Dormant:
+                    if (playerScanned)
+                    {
+                        playerScannedTimer += Time.fixedDeltaTime;
+                        if (playerScannedTimer > playerScannedDuration)
+                        {
+                            // Make sure to only chase when the player is scanning at the Locker.
+                            Vector3 directionToLocker =
+                                transform.position - playerScanning.transform.position;
+                            float angle = Vector3.Angle(
+                                playerScanning.transform.forward,
+                                directionToLocker
+                            );
+
+                            // Check if the Locker was in the players field of view when the scan completes.
+                            if (Mathf.Abs(angle) < playerScanning.gameplayCamera.fieldOfView)
+                            {
+                                // Play the ping return sound.
+                                audioSource.PlayOneShot(AudioClipPing);
+
+                                currentEyeColor = eyeColorScan;
+
+                                TargetServerRpc(playerScanning.transform.position);
+                            }
+
+                            // We hit the ping. Now reset variables.
+                            playerScanned = false;
+                            playerScannedTimer = 0;
+                            playerScannedDuration = 0;
+                        }
+                    }
+                    break;
+
                 case LockerState.Activating:
                     activationTimer += Time.fixedDeltaTime;
 
@@ -354,6 +404,14 @@ namespace Locker.MonoBehaviours
                     break;
 
                 case LockerState.Chasing:
+                    // Make sure to check that we can move and are not stuck in an infinite moving loop.
+                    if (Vector3.Distance(lastPosition, transform.position) < 0.01)
+                    {
+                        SwitchState(LockerState.Resetting);
+                    }
+
+                    lastPosition = transform.position;
+
                     currentSpeed = Mathf.Lerp(currentSpeed, maxSpeed, Time.fixedDeltaTime);
 
                     // Move towards the target location.
@@ -395,22 +453,15 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        private void OnCollisionEnter(Collision collision)
+        public override void OnCollideWithPlayer(Collider player)
         {
-            switch (state) // Handle collisions with a player during our dormant state.
+            base.OnCollideWithPlayer(player);
+            switch (State) // Handle collisions with a player during our dormant state.
             {
                 case LockerState.Dormant: // We were touched by a player, target their position.
-                    if (collision.gameObject.GetComponent<PlayerControllerB>())
+                    if (player.gameObject.GetComponent<PlayerControllerB>())
                     {
-                        Plugin.logger.LogDebug(
-                            $"Player ${collision.gameObject.name} collided with me!"
-                        );
-
-                        Target(collision.transform.position);
-                    }
-                    else
-                    {
-                        Plugin.logger.LogDebug($"I collided with ${collision.gameObject.name}!");
+                        TargetServerRpc(player.transform.position);
                     }
 
                     break;
@@ -418,15 +469,11 @@ namespace Locker.MonoBehaviours
                 default:
                     break;
             }
-
-            {
-                Plugin.logger.LogDebug($"I collided with ${collision.gameObject.name}!");
-            }
         }
 
         private void OnTriggerEnter(Collider collider)
         {
-            switch (state) // Handle collisions with a player during our chasing state.
+            switch (State) // Handle collisions with a player during our chasing state.
             {
                 // Are we in our chase phase?
                 case LockerState.Chasing:
@@ -437,7 +484,7 @@ namespace Locker.MonoBehaviours
                     // If we collided with a player controler, consume it.
                     if (playerController != null)
                     {
-                        Consume(playerController);
+                        ConsumeServerRpc(playerController);
                     }
 
                     break;
@@ -450,7 +497,7 @@ namespace Locker.MonoBehaviours
         public void SwitchState(LockerState state)
         {
             // Handle one-shot state changes.
-            this.state = state;
+            State = state;
             if (state != lastState)
             {
                 // Reset timers.
@@ -462,7 +509,7 @@ namespace Locker.MonoBehaviours
                 {
                     case LockerState.Debug:
                         // Temporarily set the target.
-                        Target(
+                        TargetServerRpc(
                             new Vector3(
                                 Random.Range(-25, 25),
                                 transform.position.y,
@@ -512,6 +559,9 @@ namespace Locker.MonoBehaviours
                         break;
 
                     case LockerState.Chasing:
+                        // Make sure we reset the last position value.
+                        lastPosition = Vector3.zero;
+
                         // Loop the chase audio.
                         audioSource.pitch = 1;
                         audioSource.clip = AudioClipChase;
@@ -560,11 +610,35 @@ namespace Locker.MonoBehaviours
 
                         if (state == LockerState.Consuming) // Activate the consume specific effects.
                         {
+                            foreach ( // Increase fear if the player witnessed the Locker consuming someone.
+                                PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
+                            {
+                                if (
+                                    Vector3.Distance(transform.position, player.transform.position)
+                                    < 5
+                                )
+                                {
+                                    player.JumpToFearLevel(1);
+                                }
+                            }
+
                             // Play the consuming sound effect.
                             audioSource.PlayOneShot(AudioClipConsume);
                         }
                         else
                         {
+                            foreach ( // Increase fear if the Locker had a close encounter.
+                                PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
+                            {
+                                if (
+                                    Vector3.Distance(transform.position, player.transform.position)
+                                    < 3
+                                )
+                                {
+                                    player.JumpToFearLevel(.8f);
+                                }
+                            }
+
                             // Play reset audio clip.
                             audioSource.PlayOneShot(AudioClipReset);
                         }
@@ -579,8 +653,16 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        public void Target(Vector3 position)
+        [ServerRpc(RequireOwnership = false)]
+        public void TargetServerRpc(Vector3 position)
         {
+            TargetClientRpc(position);
+        }
+
+        [ClientRpc]
+        public void TargetClientRpc(Vector3 position)
+        {
+            // This is the only real function that requires networking syncing as it causes all state and animation changes.
             if (
                 Mathf.Abs(position.y - transform.position.y) > 3
                 || Mathf.Abs(position.y - transform.position.y) < 0
@@ -590,7 +672,7 @@ namespace Locker.MonoBehaviours
             position.y = transform.position.y; // Make sure we don't change in elevation.
 
             // Only allowing targeting during the debug or dormant state.
-            if (state == LockerState.Dormant || state == LockerState.Debug)
+            if (State == LockerState.Dormant || State == LockerState.Debug)
             {
                 // Activate the locker and begin the attack sequence.
                 targetLocation = position;
@@ -605,11 +687,21 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        public void Consume(PlayerControllerB player)
+        [ServerRpc(RequireOwnership = false)]
+        public void ConsumeServerRpc(PlayerControllerB player)
         {
-            // Only allow consuming during the chase state.
-            if (state == LockerState.Chasing)
+            ConsumeClientRpc(player);
+        }
+
+        [ClientRpc]
+        public void ConsumeClientRpc(PlayerControllerB player)
+        {
+            // The other function that requires networking to indicate a player has died and we should play the kill animation.
+            if (State == LockerState.Chasing) // Only allow consuming during the chase state.
             {
+                // Apply heavy bleeding.
+                player.bleedingHeavily = true;
+
                 // Kill the player.
                 player.KillPlayer(Vector3.zero, false, CauseOfDeath.Crushing, 0);
 
@@ -620,10 +712,11 @@ namespace Locker.MonoBehaviours
         public void PlayerScan(PlayerControllerB player)
         {
             // Only allowing activation during the dormant state.
-            if (state == LockerState.Dormant || state == LockerState.Debug)
+            if (State == LockerState.Dormant || State == LockerState.Debug)
             {
-                if ( // Make a raycast to the player checking if they're visible.
-                    Vector3.Distance(transform.position, player.transform.position) < 90
+                float distance = Vector3.Distance(transform.position, player.transform.position);
+                if (
+                    distance < 90 // Make a raycast to the player checking if they're visible.
                     && !Physics.Linecast(
                         transform.position,
                         player.transform.position,
@@ -631,20 +724,20 @@ namespace Locker.MonoBehaviours
                     )
                 )
                 {
-                    // Make sure to only chase when the player is scanning at the Locker.
-                    Vector3 directionToLocker = transform.position - player.transform.position;
-                    float angle = Vector3.Angle(player.transform.forward, directionToLocker);
-
-                    if (Mathf.Abs(angle) < player.gameplayCamera.fieldOfView)
+                    // Make sure we assign our local player that's scanning.
+                    playerScanning = player;
+                    if (playerScanned == false)
                     {
-                        currentEyeColor = eyeColorScan;
-
-                        Target(player.transform.position);
+                        // Delay the targeting call until the scan hits the Locker. At 90m this is 3 seconds.
+                        playerScanned = true;
+                        playerScannedTimer = 0;
+                        playerScannedDuration = distance / 30;
                     }
-                }
-                else
-                {
-                    Plugin.logger.LogDebug("Raycast hit something.");
+                    else if ((playerScannedDuration - playerScannedTimer) < distance / 30)
+                    {
+                        // The player scanned while they were closer and the timer has not reached yet.
+                        playerScannedDuration = distance / 30;
+                    }
                 }
             }
         }

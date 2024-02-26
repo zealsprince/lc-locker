@@ -1,12 +1,19 @@
 
-<img src="https://img.shields.io/badge/version-0.2.0-0AF" /></a>
+<img src="https://img.shields.io/badge/version-0.6.0-0AF" /></a>
 <img src="https://img.shields.io/badge/lc--version-v49-000" /></a>
 
 ![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
 
 # This is an in development mod #
 
-Feel free to look around but nothing is in-game yet.
+Feel free to look around but the RPC aren't synced at the moment. You can test locally though by spawning it through any development UI.
+
+## To-do ##
+
+- Make sure RPCs are synced
+- Fix map screen marker switching to enemy layer
+- Fix collision not firing when the player touches enemy
+- Implement bestiary entry
 
 # The Locker #
 

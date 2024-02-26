@@ -1,4 +1,6 @@
-﻿using BepInEx;
+﻿using System;
+using System.Reflection;
+using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -8,11 +10,12 @@ using UnityEngine;
 namespace Locker
 {
     [BepInPlugin(ModGUID, ModName, ModVersion)]
+    [BepInDependency(LethalLib.Plugin.ModGUID)]
     public class Plugin : BaseUnityPlugin
     {
         public const string ModGUID = "com.zealsprince.locker";
         public const string ModName = "Locker";
-        public const string ModVersion = "0.2.0";
+        public const string ModVersion = "0.6.0";
 
         // These need to be lowercase because we're passing through the protected properties.
         public static ManualLogSource logger;
@@ -35,16 +38,47 @@ namespace Locker
                 "assets/exported/locker/enemies/lockerenemy.asset"
             );
 
+            TerminalNode lockerTerminalNode = Assets.Bundle.LoadAsset<TerminalNode>(
+                "assets/exported/locker/enemies/lockerterminalnode.asset"
+            );
+
+            TerminalKeyword lockerTerminalKeyword = Assets.Bundle.LoadAsset<TerminalKeyword>(
+                "assets/exported/locker/enemies/lockerterminalkeyword.asset"
+            );
+
             NetworkPrefabs.RegisterNetworkPrefab(lockerEnemy.enemyPrefab);
 
             Enemies.RegisterEnemy(
                 lockerEnemy,
-                25,
+                Locker.Config.LockerSpawnPower.Value,
                 Levels.LevelTypes.All,
                 Enemies.SpawnType.Default,
-                new TerminalNode(),
-                new TerminalKeyword()
+                lockerTerminalNode,
+                lockerTerminalKeyword
             );
+
+            try
+            {
+                var types = Assembly.GetExecutingAssembly().GetTypes();
+                foreach (var type in types)
+                {
+                    var methods = type.GetMethods(
+                        BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
+                    );
+                    foreach (var method in methods)
+                    {
+                        var attributes = method.GetCustomAttributes(
+                            typeof(RuntimeInitializeOnLoadMethodAttribute),
+                            false
+                        );
+                        if (attributes.Length > 0)
+                        {
+                            method.Invoke(null, null);
+                        }
+                    }
+                }
+            }
+            catch (Exception e) { }
 
             harmony.PatchAll();
         }

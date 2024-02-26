@@ -1,6 +1,37 @@
 
 # Changelog
 
+## 0.6.0
+
+- Implement reverse ping delay
+- Implement map screen marker
+- Implement scan node
+- Improve reverse ping audio
+- Reduce texture brightness and tweak materials
+- Retopoligize major parts of the Locker model
+- Add fear effect if Locker closes or consumes near a player
+
+## 0.5.0
+
+- Finalize Locker behaviour and connect to ingame spawns
+- Fix scan activation being relative to the Locker's forward transform
+
+## 0.4.0
+
+- Add sound effects to individual states
+- Add LockerAI to handle various states of player interaction
+- Allow targeting of players holding flashlights in 45 degree field of view
+- Add blood effect and consume state
+
+## 0.3.0
+
+- Add sparks animation
+- Rig and import model into Unity and set up basic animation controller
+
+## 0.2.0
+
+- Create model in Blender
+
 ## 0.1.0
 
-- First testing version
+- Initial project setup
