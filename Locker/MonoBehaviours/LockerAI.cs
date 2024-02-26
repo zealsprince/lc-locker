@@ -484,7 +484,7 @@ namespace Locker.MonoBehaviours
                     // If we collided with a player controler, consume it.
                     if (playerController != null)
                     {
-                        ConsumeServerRpc(playerController);
+                        ConsumeServerRpc(playerController.playerClientId);
                     }
 
                     break;
@@ -688,22 +688,26 @@ namespace Locker.MonoBehaviours
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void ConsumeServerRpc(PlayerControllerB player)
+        public void ConsumeServerRpc(ulong clientid)
         {
-            ConsumeClientRpc(player);
+            ConsumeClientRpc(clientid);
         }
 
         [ClientRpc]
-        public void ConsumeClientRpc(PlayerControllerB player)
+        public void ConsumeClientRpc(ulong id)
         {
             // The other function that requires networking to indicate a player has died and we should play the kill animation.
             if (State == LockerState.Chasing) // Only allow consuming during the chase state.
             {
-                // Apply heavy bleeding.
-                player.bleedingHeavily = true;
+                PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
+                if (StartOfRound.Instance.localPlayerController.playerClientId == id)
+                {
+                    // Apply heavy bleeding.
+                    localPlayer.bleedingHeavily = true;
 
-                // Kill the player.
-                player.KillPlayer(Vector3.zero, false, CauseOfDeath.Crushing, 0);
+                    // Kill the player.
+                    localPlayer.KillPlayer(Vector3.zero, false, CauseOfDeath.Crushing, 0);
+                }
 
                 SwitchState(LockerState.Consuming);
             }

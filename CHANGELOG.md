@@ -1,6 +1,10 @@
 
 # Changelog
 
+## 0.7.0
+
+- Correctly patch networking methods to fix RPCs
+
 ## 0.6.0
 
 - Implement reverse ping delay

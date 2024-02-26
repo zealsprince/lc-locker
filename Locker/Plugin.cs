@@ -15,7 +15,7 @@ namespace Locker
     {
         public const string ModGUID = "com.zealsprince.locker";
         public const string ModName = "Locker";
-        public const string ModVersion = "0.6.0";
+        public const string ModVersion = "0.7.0";
 
         // These need to be lowercase because we're passing through the protected properties.
         public static ManualLogSource logger;
@@ -50,7 +50,7 @@ namespace Locker
 
             Enemies.RegisterEnemy(
                 lockerEnemy,
-                Locker.Config.LockerSpawnPower.Value,
+                Locker.Config.LockerSpawnWeight.Value,
                 Levels.LevelTypes.All,
                 Enemies.SpawnType.Default,
                 lockerTerminalNode,

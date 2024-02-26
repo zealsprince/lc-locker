@@ -4,17 +4,17 @@ namespace Locker
 {
     public class Config
     {
-        public static ConfigEntry<int> LockerSpawnPower;
+        public static ConfigEntry<int> LockerSpawnWeight;
         public static ConfigEntry<string> LockerSpawnLevels;
 
         public static void Load()
         {
-            LockerSpawnPower = Plugin.config.Bind(
+            LockerSpawnWeight = Plugin.config.Bind(
                 "Spawning",
-                "LockerSpawnPower",
+                "LockerSpawnWeight",
                 25,
                 new ConfigDescription(
-                    "Set the chance of the navigation malfunction happening - this will force the ship to route to a random moon with no regard to cost",
+                    "What is the chance of the Locker spawning - higher values make it more common",
                     new AcceptableValueRange<int>(0, 300)
                 )
             );
