@@ -1,6 +1,13 @@
 
 # Changelog
 
+## 0.9.0
+
+- Held objects with lights will trigger while disregarding the viewing angle
+    + Flashlights are still checked to have the 30 degree viewing angle
+- Activation by scanning now disregards viewing angle
+- Change chasing logic to overshoot initial target position
+
 ## 0.8.0
 
 - Fix map marker not being visible

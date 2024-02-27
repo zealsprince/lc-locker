@@ -1,5 +1,5 @@
 
-<img src="https://img.shields.io/badge/version-0.8.0-0AF" /></a>
+<img src="https://img.shields.io/badge/version-0.9.0-0AF" /></a>
 <img src="https://img.shields.io/badge/lc--version-v49-000" /></a>
 
 ![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
@@ -26,13 +26,13 @@ Just like the hydrogene is not much of a threat, having it coupled with other en
 - At a maximum range of 90 meters it will take 3 seconds before activating
 - The locker responds to player flashlights when aimed at it and will charge at players even if the flashlight is lit in an offhand slot
 - The locker responds to player touch meaning getting stuck with it in a corner is generally a death sentence
+- The locker responds to held light sources in a 15 meter range
 - Crouching past the locker will not alert it
 - The locker can be stood on without activating it
 - Players caught in the charge are instantly killed
 - The locker can not be killed
 
 Future behavior plans include:
-- Items that cast light outside of flashlights attract its attention
 - The locker can kill enemies while rushing
 - Crashing two lockers together will cause an explosion
 
@@ -42,7 +42,6 @@ Future behavior plans include:
 
 - Adjust movement to possibly curve and be more dangerous adapting to players momentary movement
 - Add spawn rarity with specification by level
-- Implement Locker killing other enemies
 
 ## Suggestions ##
 

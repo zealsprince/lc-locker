@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using GameNetcodeStuff;
+using LethalLib.Modules;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.VFX;
@@ -58,6 +59,9 @@ namespace Locker.MonoBehaviours
         // Store the current target player and last target chase location.
         private Vector3 targetLocation;
         private Quaternion targetRotation;
+
+        // How far the locker overshoots when chasing.
+        private readonly float targetOvershoot = 2f;
 
         // Momentary rotational force of the enemy when targeting.
         private float currentRotationSpeed = 0f;
@@ -176,80 +180,15 @@ namespace Locker.MonoBehaviours
             switch (State)
             {
                 case LockerState.Dormant:
-                    // Let's get the player closest to us with the flashlight equipped or pocketed.
-                    PlayerControllerB closestPlayerWithFlashlight = null;
 
-                    // Start at infinite range and narrow down.
-                    float shortestDistance = Mathf.Infinity;
+                    getVisiblePlayerWithLightResult result = getVisiblePlayerWithLight();
 
-                    // Make sure we get players only in a valid radius around us where they can shine on the enemy.
-                    PlayerControllerB[] visiblePlayers = GetAllPlayersInLineOfSight(360, 15);
-
-                    if (visiblePlayers == null || visiblePlayers.Length == 0)
+                    if (result.Found)
                     {
-                        // We can exit out of this case early.
-                        break;
-                    }
+                        Vector3 directionToLocker = transform.position - result.Position;
 
-                    foreach (PlayerControllerB player in visiblePlayers)
-                    {
-                        // We need to keep track of multiple different sources of holding a flashlight in a single variable.
-                        bool usingLight = false;
-
-                        // Check if the player has the pocket flashlight.
-                        if (player.pocketedFlashlight != null)
-                        {
-                            // If their pocket flashlight is active: They're a target.
-                            if (player.pocketedFlashlight.isBeingUsed)
-                            {
-                                usingLight = true;
-                            }
-                        }
-                        /*
-                            // Additionally check if they have the light source equipped right now.
-                            GrabbableObject item = player.currentlyGrabbingObject;
-                            if (player.isHoldingObject && item != null)
-                            {
-                                Light[] lights = item.gameObject.GetComponentsInChildren<Light>();
-                                foreach (Light light in lights)
-                                {
-                                    if (light.enabled && light.intensity > 0 && light.range > 0)
-                                    {
-                                        usingLight = true;
-                                    }
-                                }
-                            }
-                        */
-                        if (!usingLight)
-                        {
-                            continue;
-                        }
-
-                        // Make sure they are also looking at the enemy.
-                        Vector3 directionToLocker = transform.position - player.transform.position;
-                        float angle = Vector3.Angle(player.transform.forward, directionToLocker);
-
-                        // Check if they're within a 30 degree vision angle (the equivalent of the flashlight ray)
-                        if (Mathf.Abs(angle) < 30)
-                        {
-                            float distanceToPlayer = Vector3.Distance(
-                                player.transform.position,
-                                transform.position
-                            );
-                            if (distanceToPlayer < shortestDistance)
-                            {
-                                shortestDistance = distanceToPlayer;
-
-                                closestPlayerWithFlashlight = player;
-                            }
-                        }
-                    }
-
-                    if (closestPlayerWithFlashlight != null)
-                    {
                         TargetServerRpc(
-                            closestPlayerWithFlashlight.transform.position
-                                - closestPlayerWithFlashlight.transform.forward * 2
+                            result.Position - directionToLocker.normalized * targetOvershoot
                         );
                     }
 
@@ -423,8 +362,13 @@ namespace Locker.MonoBehaviours
                             ) < 1.7
                         )
                         {
+                            // Get the direction to the locker so we can overshoot the player's position.
+                            Vector3 directionToLocker =
+                                transform.position - playerScanning.transform.position;
+
                             TargetServerRpc(
-                                closestPlayer.transform.position - closestPlayer.transform.forward
+                                closestPlayer.transform.position
+                                    - directionToLocker.normalized * targetOvershoot
                             );
 
                             break;
@@ -437,27 +381,35 @@ namespace Locker.MonoBehaviours
                         if (playerScannedTimer > playerScannedDuration)
                         {
                             // Make sure to only chase when the player is scanning at the Locker.
-                            Vector3 directionToLocker =
-                                transform.position - playerScanning.transform.position;
-                            float angle = Vector3.Angle(
-                                playerScanning.transform.forward,
-                                directionToLocker
-                            );
+                            /*
+                                Vector3 directionToLocker =
+                                    transform.position - playerScanning.transform.position;
+                                float angle = Vector3.Angle(
+                                    playerScanning.transform.forward,
+                                    directionToLocker
+                                );
+                            */
 
                             // Check if the Locker was in the players field of view when the scan completes.
-                            if (Mathf.Abs(angle) < playerScanning.gameplayCamera.fieldOfView)
-                            {
-                                // Play the ping return sound.
-                                audioSource.PlayOneShot(AudioClipPing, 1.5f);
-                                playerScanning.JumpToFearLevel(.2f);
+                            // if (Mathf.Abs(angle) < playerScanning.gameplayCamera.fieldOfView)
+                            // {
 
-                                currentEyeColor = eyeColorScan;
+                            // Play the ping return sound.
+                            audioSource.PlayOneShot(AudioClipPing, 1.5f);
+                            playerScanning.JumpToFearLevel(.2f);
 
-                                TargetServerRpc(
-                                    playerScanning.transform.position
-                                        - playerScanning.transform.forward * 3
-                                );
-                            }
+                            currentEyeColor = eyeColorScan;
+
+                            // Get the direction to the locker so we can overshoot the player's position.
+                            Vector3 directionToLocker =
+                                transform.position - playerScanning.transform.position;
+
+                            TargetServerRpc(
+                                playerScanning.transform.position
+                                    - directionToLocker.normalized * targetOvershoot
+                            );
+
+                            // }
 
                             // We hit the ping. Now reset variables.
                             playerScanned = false;
@@ -724,6 +676,122 @@ namespace Locker.MonoBehaviours
             }
         }
 
+        public class getVisiblePlayerWithLightResult
+        {
+            public bool Found;
+            public Vector3 Position;
+
+            public getVisiblePlayerWithLightResult(bool found, Vector3 position)
+            {
+                Found = found;
+                Position = position;
+            }
+        }
+
+        private getVisiblePlayerWithLightResult getVisiblePlayerWithLight()
+        {
+            // Let's get the player closest to us with a light equipped or flashlight pocketed.
+            PlayerControllerB closestPlayerWithLight = null;
+
+            // Start at infinite range and narrow down.
+            float shortestDistance = Mathf.Infinity;
+
+            // Make sure we get players only in a valid radius around us where they can shine on the enemy.
+            PlayerControllerB[] visiblePlayers = GetAllPlayersInLineOfSight(360, 15);
+
+            if (visiblePlayers == null || visiblePlayers.Length == 0)
+            {
+                // We can exit out of this case early.
+                return new getVisiblePlayerWithLightResult(false, Vector3.zero);
+            }
+
+            foreach (PlayerControllerB player in visiblePlayers)
+            {
+                // We need to keep track of multiple different sources of holding a flashlight in a single variable.
+                bool usingLight = false;
+
+                // Check the direction to the enemy.
+                Vector3 directionToLocker = transform.position - player.transform.position;
+
+                // Perform an angle check used for flashlight items being held as well as the pocket flashlight.
+                float viewAngle = Vector3.Angle(player.transform.forward, directionToLocker);
+
+                // Check if the player has the pocket flashlight.
+                if (player.pocketedFlashlight != null)
+                {
+                    // If their pocket flashlight is active: They're a target.
+                    if (player.pocketedFlashlight.isBeingUsed)
+                    {
+                        // Check if they're within a 30 degree vision angle (the equivalent of the flashlight ray)
+                        if (Mathf.Abs(viewAngle) < 30)
+                        {
+                            usingLight = true;
+                        }
+                    }
+                }
+
+                // Additionally check if they have the light source equipped right now and we haven't detected a pocket light.
+                GrabbableObject item = player.currentlyHeldObjectServer;
+                if (!usingLight && player.isHoldingObject && item != null)
+                {
+                    // Check if we're holding a flashlight and should perform the angle check.
+                    bool isFlashlight = item.GetType() == typeof(FlashlightItem);
+
+                    // Check for lights on the actively held object.
+                    Light[] lights = item.gameObject.GetComponentsInChildren<Light>();
+                    foreach (Light light in lights)
+                    {
+                        // Check that the lights are active and have values beyond zero.
+                        if (light.enabled && light.intensity > 0 && light.range > 0)
+                        {
+                            if (isFlashlight) // Additionally check the viewing angle since this is a flashlight.
+                            {
+                                if (Mathf.Abs(viewAngle) < 30)
+                                {
+                                    usingLight = true;
+                                }
+                            }
+                            else
+                            {
+                                usingLight = true;
+                            }
+                        }
+                    }
+                }
+
+                if (!usingLight)
+                {
+                    continue;
+                }
+
+                // Check the distance to this light emitting player.
+                float distanceToPlayer = Vector3.Distance(
+                    player.transform.position,
+                    transform.position
+                );
+
+                if (distanceToPlayer < shortestDistance)
+                {
+                    shortestDistance = distanceToPlayer;
+
+                    closestPlayerWithLight = player;
+                }
+            }
+
+            // Check if a player was found after our checks.
+            if (closestPlayerWithLight != null)
+            {
+                return new getVisiblePlayerWithLightResult(
+                    true,
+                    closestPlayerWithLight.transform.position
+                );
+            }
+            else
+            {
+                return new getVisiblePlayerWithLightResult(false, Vector3.zero);
+            }
+        }
+
         [ServerRpc(RequireOwnership = false)]
         public void TargetServerRpc(Vector3 position)
         {
@@ -755,6 +823,35 @@ namespace Locker.MonoBehaviours
                 targetRotation *= Quaternion.Euler(Vector3.up * 90);
 
                 SwitchState(LockerState.Activating);
+            }
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void RetargetServerRpc()
+        {
+            RetargetClientRpc();
+        }
+
+        [ClientRpc]
+        public void RetargetClientRpc()
+        {
+            // This function allows retargeting the previously selected player while chasing.
+            if (State == LockerState.Chasing)
+            {
+                /*
+                    if (
+                        Mathf.Abs(position.y - transform.position.y) > 3
+                        || Mathf.Abs(position.y - transform.position.y) < 0
+                    ) // Don't target entities higher or lower.
+                        // Activate the locker and begin the attack sequence.
+                        targetLocation = position;
+              
+                    // Set the target rotation.
+                    targetRotation = Quaternion.LookRotation(targetLocation - transform.position);
+              
+                    // Rotate an additional 90 degree offset.
+                    targetRotation *= Quaternion.Euler(Vector3.up * 90);
+              */
             }
         }
 
