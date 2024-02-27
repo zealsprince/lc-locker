@@ -1,5 +1,5 @@
 
-<img src="https://img.shields.io/badge/version-0.7.0-0AF" /></a>
+<img src="https://img.shields.io/badge/version-0.8.0-0AF" /></a>
 <img src="https://img.shields.io/badge/lc--version-v49-000" /></a>
 
 ![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
@@ -8,22 +8,41 @@
 
 *In darkness it lurks, seeks light and sense and only responds with hunger.*
 
-A new and unique enemy that responds to player's vision much like a coilhead but with a few twists.
+A new and unique enemy/hazard that responds to player's vision much like a coilhead but with a few twists.
 
 ## Behavior ##
 
-The locker is a bit of a different enemy in that it represents more of an obstacle when encountered as an experienced player. At the same time it's purpose is to bring back fear and shock to the gameplay, similar to a coil head without impacting gameplay as much on its own.
+The locker is a bit of a different enemy in that it represents more of a possible future obstacle when encountered as an experienced player. At the same time its purpose is to bring back an extra element of surprise and dynamic to the gameplay through unannounced encounters, similar to a coil head without the permanent danger and caveats that come with it.
 
-While the coilhead is a foe that is constantly seeking out the player, the locker is much more of a hindrance that becomes a grave situational threat when combined with other enemies.
+Just like the hydrogene is not much of a threat, having it coupled with other enemies increases its difficulty. Additionally, I want to create new and dynamic situations much like those found in the base game caused by coil heads, spiders and hydrogenes roaming. As such this enemy is designed with that in mind.
+
+**Further details about its behaviour can be found below - keep in mind if you're looking for something new to be surprised, these are a spoiler**
+
+<details> 
+  <summary>Behavior Details:</summary>
+
+- The locker activates and charges at a player if they scan with it in sight up to a range of 90 meters
+- Activating from a scan has to propagate to the locker and matches the scan wave you see in game
+- At a maximum range of 90 meters it will take 3 seconds before activating
+- The locker responds to player flashlights when aimed at it and will charge at players even if the flashlight is lit in an offhand slot
+- The locker responds to player touch meaning getting stuck with it in a corner is generally a death sentence
+- Crouching past the locker will not alert it
+- The locker can be stood on without activating it
+- Players caught in the charge are instantly killed
+- The locker can not be killed
+
+Future behavior plans include:
+- Items that cast light outside of flashlights attract its attention
+- The locker can kill enemies while rushing
+- Crashing two lockers together will cause an explosion
+
+</details>
 
 ## To-do ##
 
-- Fix any bugs people encounter
-- Fix map screen marker switching to enemy layer (disabled for now)
-- Fix collision not firing when the player touches enemy
-- Implement bestiary entry
+- Adjust movement to possibly curve and be more dangerous adapting to players momentary movement
 - Add spawn rarity with specification by level
-- Visual tweaks
+- Implement Locker killing other enemies
 
 ## Suggestions ##
 

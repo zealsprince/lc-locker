@@ -15,7 +15,7 @@ namespace Locker
     {
         public const string ModGUID = "com.zealsprince.locker";
         public const string ModName = "Locker";
-        public const string ModVersion = "0.7.0";
+        public const string ModVersion = "0.8.0";
 
         // These need to be lowercase because we're passing through the protected properties.
         public static ManualLogSource logger;
@@ -57,6 +57,8 @@ namespace Locker
                 lockerTerminalKeyword
             );
 
+            // Unity Netcode Patcher code - read more about it here and what to do to patch your mod:
+            // https://github.com/EvaisaDev/UnityNetcodePatcher
             try
             {
                 var types = Assembly.GetExecutingAssembly().GetTypes();

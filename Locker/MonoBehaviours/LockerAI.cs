@@ -1,7 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using GameNetcodeStuff;
-using LethalLib.Modules;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.VFX;
@@ -63,11 +61,11 @@ namespace Locker.MonoBehaviours
 
         // Momentary rotational force of the enemy when targeting.
         private float currentRotationSpeed = 0f;
-        private readonly float maxRotationSpeed = 60f;
+        private readonly float maxRotationSpeed = 90f;
 
         // Momentary speed values of the enemy.
         private float currentSpeed = 0f;
-        private readonly float maxSpeed = 1f;
+        private readonly float maxSpeed = 1.2f;
 
         // Current eye color and intensity.
         private Color currentEyeColor = eyeColorDormant;
@@ -178,32 +176,83 @@ namespace Locker.MonoBehaviours
             switch (State)
             {
                 case LockerState.Dormant:
-                    // Get the closest player if possible.
-                    PlayerControllerB closestPlayer = GetClosestPlayer(true, true, true);
-                    if (closestPlayer != null)
-                    {
-                        // Check if the player has the pocket flashlight.
-                        if (closestPlayer.pocketedFlashlight != null)
-                        {
-                            // If their flashlight is out and activate. Chase.
-                            if (closestPlayer.pocketedFlashlight.isBeingUsed)
-                            {
-                                // Make sure to only chase when the player is shining their flashlight at the Locker.
-                                Vector3 directionToLocker =
-                                    transform.position - closestPlayer.transform.position;
-                                float angle = Vector3.Angle(
-                                    closestPlayer.transform.forward,
-                                    directionToLocker
-                                );
+                    // Let's get the player closest to us with the flashlight equipped or pocketed.
+                    PlayerControllerB closestPlayerWithFlashlight = null;
 
-                                // Check if the Locker is in the middle 45 degree range of the players view (as in they're shining on it)
-                                if (Mathf.Abs(angle) < 45)
+                    // Start at infinite range and narrow down.
+                    float shortestDistance = Mathf.Infinity;
+
+                    // Make sure we get players only in a valid radius around us where they can shine on the enemy.
+                    PlayerControllerB[] visiblePlayers = GetAllPlayersInLineOfSight(360, 15);
+
+                    if (visiblePlayers == null || visiblePlayers.Length == 0)
+                    {
+                        // We can exit out of this case early.
+                        break;
+                    }
+
+                    foreach (PlayerControllerB player in visiblePlayers)
+                    {
+                        // We need to keep track of multiple different sources of holding a flashlight in a single variable.
+                        bool usingLight = false;
+
+                        // Check if the player has the pocket flashlight.
+                        if (player.pocketedFlashlight != null)
+                        {
+                            // If their pocket flashlight is active: They're a target.
+                            if (player.pocketedFlashlight.isBeingUsed)
+                            {
+                                usingLight = true;
+                            }
+                        }
+                        /*
+                            // Additionally check if they have the light source equipped right now.
+                            GrabbableObject item = player.currentlyGrabbingObject;
+                            if (player.isHoldingObject && item != null)
+                            {
+                                Light[] lights = item.gameObject.GetComponentsInChildren<Light>();
+                                foreach (Light light in lights)
                                 {
-                                    TargetServerRpc(closestPlayer.transform.position);
+                                    if (light.enabled && light.intensity > 0 && light.range > 0)
+                                    {
+                                        usingLight = true;
+                                    }
                                 }
+                            }
+                        */
+                        if (!usingLight)
+                        {
+                            continue;
+                        }
+
+                        // Make sure they are also looking at the enemy.
+                        Vector3 directionToLocker = transform.position - player.transform.position;
+                        float angle = Vector3.Angle(player.transform.forward, directionToLocker);
+
+                        // Check if they're within a 30 degree vision angle (the equivalent of the flashlight ray)
+                        if (Mathf.Abs(angle) < 30)
+                        {
+                            float distanceToPlayer = Vector3.Distance(
+                                player.transform.position,
+                                transform.position
+                            );
+                            if (distanceToPlayer < shortestDistance)
+                            {
+                                shortestDistance = distanceToPlayer;
+
+                                closestPlayerWithFlashlight = player;
                             }
                         }
                     }
+
+                    if (closestPlayerWithFlashlight != null)
+                    {
+                        TargetServerRpc(
+                            closestPlayerWithFlashlight.transform.position
+                                - closestPlayerWithFlashlight.transform.forward * 2
+                        );
+                    }
+
                     break;
             }
         }
@@ -295,7 +344,7 @@ namespace Locker.MonoBehaviours
                     // Fade in our internal lights quickly.
                     internalLight.intensity = Mathf.Lerp(
                         internalLight.intensity,
-                        40000,
+                        20000,
                         Time.deltaTime
                     );
 
@@ -303,8 +352,8 @@ namespace Locker.MonoBehaviours
                     foreach (Light light in scrapeLights)
                     {
                         light.intensity = Mathf.Lerp(
-                            light.intensity + Random.Range(-30000, 30000),
-                            40000,
+                            light.intensity + Random.Range(-3000, 3000),
+                            4000,
                             Time.deltaTime * 2
                         );
                     }
@@ -343,7 +392,7 @@ namespace Locker.MonoBehaviours
                     // Quickly fade out the scrape lights.
                     foreach (Light light in scrapeLights)
                     {
-                        light.intensity = Mathf.Lerp(light.intensity, 0, Time.deltaTime * 2);
+                        light.intensity = Mathf.Lerp(light.intensity, 0, Time.deltaTime * 8);
                     }
 
                     break;
@@ -361,6 +410,27 @@ namespace Locker.MonoBehaviours
             switch (State)
             {
                 case LockerState.Dormant:
+                    // If a player is in touching range and not standing on the enemy, target them.
+                    PlayerControllerB closestPlayer = GetClosestPlayer(false, true, true);
+                    if (closestPlayer != null)
+                    {
+                        if (
+                            Mathf.Abs(closestPlayer.transform.position.y - transform.position.y) + 2
+                                > 2
+                            && Vector3.Distance(
+                                closestPlayer.transform.position,
+                                transform.position
+                            ) < 1.7
+                        )
+                        {
+                            TargetServerRpc(
+                                closestPlayer.transform.position - closestPlayer.transform.forward
+                            );
+
+                            break;
+                        }
+                    }
+
                     if (playerScanned)
                     {
                         playerScannedTimer += Time.fixedDeltaTime;
@@ -378,11 +448,15 @@ namespace Locker.MonoBehaviours
                             if (Mathf.Abs(angle) < playerScanning.gameplayCamera.fieldOfView)
                             {
                                 // Play the ping return sound.
-                                audioSource.PlayOneShot(AudioClipPing);
+                                audioSource.PlayOneShot(AudioClipPing, 1.5f);
+                                playerScanning.JumpToFearLevel(.2f);
 
                                 currentEyeColor = eyeColorScan;
 
-                                TargetServerRpc(playerScanning.transform.position);
+                                TargetServerRpc(
+                                    playerScanning.transform.position
+                                        - playerScanning.transform.forward * 3
+                                );
                             }
 
                             // We hit the ping. Now reset variables.
@@ -453,16 +527,13 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        public override void OnCollideWithPlayer(Collider player)
+        private void OnCollisionEnter(Collision collision)
         {
-            base.OnCollideWithPlayer(player);
-            switch (State) // Handle collisions with a player during our dormant state.
+            switch (State) // Handle collisions with entities during our chasing state.
             {
-                case LockerState.Dormant: // We were touched by a player, target their position.
-                    if (player.gameObject.GetComponent<PlayerControllerB>())
-                    {
-                        TargetServerRpc(player.transform.position);
-                    }
+                // Are we in our chase phase?
+                case LockerState.Chasing:
+                    // Plugin.logger.LogDebug(collision.collider.name);
 
                     break;
 
@@ -706,7 +777,7 @@ namespace Locker.MonoBehaviours
                     localPlayer.bleedingHeavily = true;
 
                     // Kill the player.
-                    localPlayer.KillPlayer(Vector3.zero, false, CauseOfDeath.Crushing, 0);
+                    localPlayer.KillPlayer(Vector3.zero, true, CauseOfDeath.Crushing, 1);
                 }
 
                 SwitchState(LockerState.Consuming);

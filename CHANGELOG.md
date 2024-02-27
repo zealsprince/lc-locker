@@ -1,6 +1,15 @@
 
 # Changelog
 
+## 0.8.0
+
+- Fix map marker not being visible
+- Improve flashlight detection logic and make normally held flashlights work too
+- Implement player proximity detection and crouching to evade
+- Change player kill animation
+- Change colors and alignment of some textures
+- Add bestiary entry
+
 ## 0.7.0
 
 - Correctly patch networking methods to fix RPCs
