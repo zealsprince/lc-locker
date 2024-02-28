@@ -1,5 +1,5 @@
 
-<img src="https://img.shields.io/badge/version-0.11.1-0AF" /></a>
+<img src="https://img.shields.io/badge/version-0.11.2-0AF" /></a>
 <img src="https://img.shields.io/badge/lc--version-v49-000" /></a>
 
 ![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
@@ -9,6 +9,8 @@
 *In darkness it lurks, seeks light and sense and only responds with hunger.*
 
 A new and unique enemy/hazard that responds to player's vision much like a coilhead but with a few twists.
+
+[Video Preview / Spoiler](https://www.youtube.com/watch?v=wjYhH5tceDc)
 
 ## Behavior ##
 
@@ -40,7 +42,6 @@ Future behavior plans include:
 
 ## To-do ##
 
-- Adjust movement to possibly curve and be more dangerous adapting to players momentary movement
 - Add spawn rarity with specification by level
 
 ## Suggestions ##

@@ -1,10 +1,14 @@
 
 # Changelog #
 
+## 0.11.2 ##
+
+- Add video preview to readme
+
 ## 0.11.1 ##
 
 - Make kill trigger less forgiving by adding a distance check which should fix getting squished into walls but not being killed
-- Reduced the height of enemy agent to make light detection more likely
+- Reduce the height of enemy agent to make light detection more likely
 
 ## 0.11.0 ##
 
