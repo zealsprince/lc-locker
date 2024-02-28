@@ -28,12 +28,12 @@
 - Implement scan node
 - Improve reverse ping audio
 - Reduce texture brightness and tweak materials
-- Retopoligize major parts of the Locker model
+- Retopologize major parts of the Locker model
 - Add fear effect if Locker closes or consumes near a player
 
 ## 0.5.0
 
-- Finalize Locker behaviour and connect to ingame spawns
+- Finalize Locker behavior and connect to in-game spawns
 - Fix scan activation being relative to the Locker's forward transform
 
 ## 0.4.0

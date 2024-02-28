@@ -21,7 +21,7 @@ Just like the hydrogene is not much of a threat, having it coupled with other en
 <details> 
   <summary>Behavior Details:</summary>
 
-- The locker activates and charges at a player if they scan with it in sight up to a range of 90 meters
+- The locker activates and charges at a player if they scan it having a clear line to the player up to a range of 90 meters
 - Activating from a scan has to propagate to the locker and matches the scan wave you see in game
 - At a maximum range of 90 meters it will take 3 seconds before activating
 - The locker responds to player flashlights when aimed at it and will charge at players even if the flashlight is lit in an offhand slot
