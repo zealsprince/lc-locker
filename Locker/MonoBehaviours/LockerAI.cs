@@ -327,12 +327,14 @@ namespace Locker.MonoBehaviours
 
         private void FixedUpdate()
         {
+            PlayerControllerB closestPlayer = GetClosestPlayer(false, true, true);
+
             // Handle logic and required state changes.
             switch (State)
             {
                 case LockerState.Dormant:
                     // If a player is in touching range and not standing on the enemy, target them.
-                    PlayerControllerB closestPlayer = GetClosestPlayer(false, true, true);
+
                     if (closestPlayer != null)
                     {
                         if (
@@ -357,17 +359,12 @@ namespace Locker.MonoBehaviours
                         }
                     }
 
-                    // Commence a chace if the player is holding a light source or pointing a flashlight.
+                    // Commence a chase if the player is holding a light source or pointing a flashlight.
                     if (isLocalPlayerClosestWithLight())
                     {
-                        Vector3 directionToLocker =
-                            transform.position
-                            - StartOfRound.Instance.localPlayerController.transform.position;
-
                         TargetServerRpc(
                             StartOfRound.Instance.localPlayerController.playerClientId,
                             StartOfRound.Instance.localPlayerController.transform.position
-                                - directionToLocker.normalized
                         );
                     }
 
@@ -389,7 +386,7 @@ namespace Locker.MonoBehaviours
 
                             TargetServerRpc(
                                 playerScanning.playerClientId,
-                                playerScanning.transform.position - directionToLocker.normalized
+                                playerScanning.transform.position
                             );
 
                             // We hit the ping. Now reset variables.
@@ -411,7 +408,7 @@ namespace Locker.MonoBehaviours
                     break;
 
                 case LockerState.Chasing:
-                    // Commence a chace if the player is holding a light source or pointing a flashlight.
+                    // Commence a chase if the player is holding a light source or pointing a flashlight.
                     if (isLocalPlayerClosestWithLight())
                     {
                         TargetServerRpc(
@@ -441,6 +438,24 @@ namespace Locker.MonoBehaviours
                             playerScanned = false;
                             playerScannedTimer = 0;
                             playerScannedDuration = 0;
+                        }
+                    }
+
+                    // Check if there's a player touching the locker while it's moving. Kill them.
+                    if (closestPlayer != null)
+                    {
+                        if (
+                            Mathf.Abs(closestPlayer.transform.position.y - transform.position.y) + 2
+                                > 2
+                            && Vector3.Distance(
+                                closestPlayer.transform.position,
+                                transform.position
+                            ) < 2
+                        )
+                        {
+                            ConsumeServerRpc(closestPlayer.playerClientId);
+
+                            break;
                         }
                     }
 
@@ -675,6 +690,9 @@ namespace Locker.MonoBehaviours
 
         private bool isLocalPlayerClosestWithLight()
         {
+            // Why do all the effort of checking for all players and then just focus on the local one?
+            // -- For some reason I can't check if other players have an item active unless it's the local one.
+
             // Let's get the player closest to us with a light equipped or flashlight pocketed.
             PlayerControllerB closestPlayerWithLight = null;
 

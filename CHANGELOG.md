@@ -1,6 +1,11 @@
 
 # Changelog #
 
+## 0.11.1 ##
+
+- Make kill trigger less forgiving by adding a distance check which should fix getting squished into walls but not being killed
+- Reduced the height of enemy agent to make light detection more likely
+
 ## 0.11.0 ##
 
 - Fix non host players not being killed
