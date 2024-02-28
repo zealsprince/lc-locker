@@ -57,7 +57,7 @@ namespace Locker.MonoBehaviours
         private LockerState lastState;
 
         // Store the current target player and last target chase location.
-        private Vector3 targetLocation;
+        private Vector3 targetPosition;
         private Quaternion targetRotation;
 
         // How far the locker overshoots when chasing.
@@ -106,6 +106,7 @@ namespace Locker.MonoBehaviours
         // Store the current state publicly so I can switch it in the inspector.
         public LockerState State;
         public bool DebugToCamera = false;
+        public bool UseNavmesh = true;
 
         public AudioClip AudioClipPing;
         public AudioClip AudioClipActivate;
@@ -158,7 +159,7 @@ namespace Locker.MonoBehaviours
             internalLight.intensity = 0;
             internalLight.enabled = true;
 
-            targetLocation = Vector3.zero;
+            targetPosition = Vector3.zero;
 
             // Capture all visual effects that are a part of this.
             visualEffects = gameObject.GetComponentsInChildren<VisualEffect>();
@@ -364,7 +365,7 @@ namespace Locker.MonoBehaviours
                         {
                             // Get the direction to the locker so we can overshoot the player's position.
                             Vector3 directionToLocker =
-                                transform.position - playerScanning.transform.position;
+                                transform.position - closestPlayer.transform.position;
 
                             TargetServerRpc(
                                 closestPlayer.transform.position
@@ -436,18 +437,22 @@ namespace Locker.MonoBehaviours
                         SwitchState(LockerState.Resetting);
                     }
 
+                    // Track our last position so that we can reset if we stop moving.
                     lastPosition = transform.position;
 
-                    currentSpeed = Mathf.Lerp(currentSpeed, maxSpeed, Time.fixedDeltaTime);
+                    if (UseNavmesh)
+                    {
+                        currentSpeed = Mathf.Lerp(currentSpeed, maxSpeed, Time.fixedDeltaTime);
 
-                    // Move towards the target location.
-                    transform.position = Vector3.MoveTowards(
-                        transform.position,
-                        targetLocation,
-                        currentSpeed
-                    );
+                        // Move towards the target location.
+                        transform.position = Vector3.MoveTowards(
+                            transform.position,
+                            targetPosition,
+                            currentSpeed
+                        );
+                    }
 
-                    if (Vector3.Distance(transform.position, targetLocation) < .1f)
+                    if (Vector3.Distance(transform.position, targetPosition) < .1f)
                     {
                         SwitchState(LockerState.Resetting);
                     }
@@ -540,7 +545,7 @@ namespace Locker.MonoBehaviours
                             )
                         );
 
-                        print($"Set current debug Locker target to: {targetLocation}");
+                        print($"Set current debug Locker target to: {targetPosition}");
 
                         break;
 
@@ -582,6 +587,12 @@ namespace Locker.MonoBehaviours
                         break;
 
                     case LockerState.Chasing:
+                        if (UseNavmesh)
+                        {
+                            // Experimental moving towards a position via nav mesh.
+                            SetDestinationToPosition(targetPosition);
+                        }
+
                         // Make sure we reset the last position value.
                         lastPosition = Vector3.zero;
 
@@ -814,10 +825,10 @@ namespace Locker.MonoBehaviours
             if (State == LockerState.Dormant || State == LockerState.Debug)
             {
                 // Activate the locker and begin the attack sequence.
-                targetLocation = position;
+                targetPosition = position;
 
                 // Set the target rotation.
-                targetRotation = Quaternion.LookRotation(targetLocation - transform.position);
+                targetRotation = Quaternion.LookRotation(targetPosition - transform.position);
 
                 // Rotate an additional 90 degree offset.
                 targetRotation *= Quaternion.Euler(Vector3.up * 90);
@@ -844,10 +855,10 @@ namespace Locker.MonoBehaviours
                         || Mathf.Abs(position.y - transform.position.y) < 0
                     ) // Don't target entities higher or lower.
                         // Activate the locker and begin the attack sequence.
-                        targetLocation = position;
+                        targetPosition = position;
               
                     // Set the target rotation.
-                    targetRotation = Quaternion.LookRotation(targetLocation - transform.position);
+                    targetRotation = Quaternion.LookRotation(targetPosition - transform.position);
               
                     // Rotate an additional 90 degree offset.
                     targetRotation *= Quaternion.Euler(Vector3.up * 90);
