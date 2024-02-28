@@ -15,7 +15,7 @@ namespace Locker
     {
         public const string ModGUID = "com.zealsprince.locker";
         public const string ModName = "Locker";
-        public const string ModVersion = "0.10.0";
+        public const string ModVersion = "0.11.0";
 
         // These need to be lowercase because we're passing through the protected properties.
         public static ManualLogSource logger;

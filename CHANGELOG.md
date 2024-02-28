@@ -1,6 +1,12 @@
 
 # Changelog #
 
+## 0.11.0 ##
+
+- Fix non host players not being killed
+- Fix non host players holding lights not activating the enemy
+- Implement enemy re-targeting the previous target if it's activated again
+
 ## 0.10.0 ##
 
 - Switched to using nav mesh for traversal to better avoid obstacles

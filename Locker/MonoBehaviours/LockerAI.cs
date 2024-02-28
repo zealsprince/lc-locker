@@ -56,20 +56,14 @@ namespace Locker.MonoBehaviours
         // Last state for easier transitions.
         private LockerState lastState;
 
-        // Store the current target player and last target chase location.
+        // Store the current target position, rotation and client.
         private Vector3 targetPosition;
         private Quaternion targetRotation;
-
-        // How far the locker overshoots when chasing.
-        private readonly float targetOvershoot = 2f;
+        private ulong targetClientId;
 
         // Momentary rotational force of the enemy when targeting.
         private float currentRotationSpeed = 0f;
         private readonly float maxRotationSpeed = 90f;
-
-        // Momentary speed values of the enemy.
-        private float currentSpeed = 0f;
-        private readonly float maxSpeed = 1.2f;
 
         // Current eye color and intensity.
         private Color currentEyeColor = eyeColorDormant;
@@ -100,13 +94,16 @@ namespace Locker.MonoBehaviours
         private float playerScannedTimer = 0f;
         private float playerScannedDuration = 0f;
 
-        private Vector3 lastPosition = Vector3.zero;
+        // Keep track of retargeting timings to not send an abundance of RPCs.
+        private float lastTargetTime;
+
+        // Allow retargeting only every quarter of a second (maximum 5 calls).
+        private readonly float lastTargetTimeframe = .2f;
 
         [Header("Locker")]
         // Store the current state publicly so I can switch it in the inspector.
         public LockerState State;
         public bool DebugToCamera = false;
-        public bool UseNavmesh = true;
 
         public AudioClip AudioClipPing;
         public AudioClip AudioClipActivate;
@@ -177,24 +174,6 @@ namespace Locker.MonoBehaviours
         public override void DoAIInterval()
         {
             base.DoAIInterval();
-
-            switch (State)
-            {
-                case LockerState.Dormant:
-
-                    getVisiblePlayerWithLightResult result = getVisiblePlayerWithLight();
-
-                    if (result.Found)
-                    {
-                        Vector3 directionToLocker = transform.position - result.Position;
-
-                        TargetServerRpc(
-                            result.Position - directionToLocker.normalized * targetOvershoot
-                        );
-                    }
-
-                    break;
-            }
         }
 
         public override void Update()
@@ -205,8 +184,9 @@ namespace Locker.MonoBehaviours
             {
                 DebugToCamera = false;
 
-                TargetServerRpc(Camera.main.transform.position);
+                TargetServerRpc(0, Camera.main.transform.position);
             }
+
             // Override in case I want to manually change states through the inspector.
             if (State != lastState)
             {
@@ -312,6 +292,7 @@ namespace Locker.MonoBehaviours
 
                         consumeBloodTriggered = true;
                     }
+
                     // Reset the rotation to the target after chase.
                     transform.rotation = Quaternion.Slerp(
                         transform.rotation,
@@ -368,33 +349,34 @@ namespace Locker.MonoBehaviours
                                 transform.position - closestPlayer.transform.position;
 
                             TargetServerRpc(
+                                closestPlayer.playerClientId,
                                 closestPlayer.transform.position
-                                    - directionToLocker.normalized * targetOvershoot
                             );
 
                             break;
                         }
                     }
 
+                    // Commence a chace if the player is holding a light source or pointing a flashlight.
+                    if (isLocalPlayerClosestWithLight())
+                    {
+                        Vector3 directionToLocker =
+                            transform.position
+                            - StartOfRound.Instance.localPlayerController.transform.position;
+
+                        TargetServerRpc(
+                            StartOfRound.Instance.localPlayerController.playerClientId,
+                            StartOfRound.Instance.localPlayerController.transform.position
+                                - directionToLocker.normalized
+                        );
+                    }
+
+                    // Check if a player scanned.
                     if (playerScanned)
                     {
                         playerScannedTimer += Time.fixedDeltaTime;
                         if (playerScannedTimer > playerScannedDuration)
                         {
-                            // Make sure to only chase when the player is scanning at the Locker.
-                            /*
-                                Vector3 directionToLocker =
-                                    transform.position - playerScanning.transform.position;
-                                float angle = Vector3.Angle(
-                                    playerScanning.transform.forward,
-                                    directionToLocker
-                                );
-                            */
-
-                            // Check if the Locker was in the players field of view when the scan completes.
-                            // if (Mathf.Abs(angle) < playerScanning.gameplayCamera.fieldOfView)
-                            // {
-
                             // Play the ping return sound.
                             audioSource.PlayOneShot(AudioClipPing, 1.5f);
                             playerScanning.JumpToFearLevel(.2f);
@@ -406,11 +388,9 @@ namespace Locker.MonoBehaviours
                                 transform.position - playerScanning.transform.position;
 
                             TargetServerRpc(
-                                playerScanning.transform.position
-                                    - directionToLocker.normalized * targetOvershoot
+                                playerScanning.playerClientId,
+                                playerScanning.transform.position - directionToLocker.normalized
                             );
-
-                            // }
 
                             // We hit the ping. Now reset variables.
                             playerScanned = false;
@@ -431,30 +411,42 @@ namespace Locker.MonoBehaviours
                     break;
 
                 case LockerState.Chasing:
-                    // Make sure to check that we can move and are not stuck in an infinite moving loop.
-                    if (Vector3.Distance(lastPosition, transform.position) < 0.01)
+                    // Commence a chace if the player is holding a light source or pointing a flashlight.
+                    if (isLocalPlayerClosestWithLight())
                     {
-                        SwitchState(LockerState.Resetting);
-                    }
-
-                    // Track our last position so that we can reset if we stop moving.
-                    lastPosition = transform.position;
-
-                    if (UseNavmesh)
-                    {
-                        currentSpeed = Mathf.Lerp(currentSpeed, maxSpeed, Time.fixedDeltaTime);
-
-                        // Move towards the target location.
-                        transform.position = Vector3.MoveTowards(
-                            transform.position,
-                            targetPosition,
-                            currentSpeed
+                        TargetServerRpc(
+                            StartOfRound.Instance.localPlayerController.playerClientId,
+                            StartOfRound.Instance.localPlayerController.transform.position
                         );
                     }
 
-                    if (Vector3.Distance(transform.position, targetPosition) < .1f)
+                    // Check if the local player scanned.
+                    if (playerScanned)
                     {
-                        SwitchState(LockerState.Resetting);
+                        playerScannedTimer += Time.fixedDeltaTime;
+                        if (playerScannedTimer > playerScannedDuration)
+                        {
+                            // Play the ping return sound.
+                            audioSource.PlayOneShot(AudioClipPing, 1.5f);
+                            playerScanning.JumpToFearLevel(.5f);
+
+                            currentEyeColor = eyeColorScan;
+
+                            TargetServerRpc(
+                                playerScanning.playerClientId,
+                                playerScanning.transform.position
+                            );
+
+                            // We hit the ping. Now reset variables.
+                            playerScanned = false;
+                            playerScannedTimer = 0;
+                            playerScannedDuration = 0;
+                        }
+                    }
+
+                    if (Vector3.Distance(transform.position, targetPosition) < 1.5f)
+                    {
+                        ResetServerRpc();
                     }
 
                     break;
@@ -538,6 +530,7 @@ namespace Locker.MonoBehaviours
                     case LockerState.Debug:
                         // Temporarily set the target.
                         TargetServerRpc(
+                            0,
                             new Vector3(
                                 Random.Range(-25, 25),
                                 transform.position.y,
@@ -553,8 +546,7 @@ namespace Locker.MonoBehaviours
                         // Reset our audio source.
                         audioSource.loop = false;
 
-                        // Reset speed values.
-                        currentSpeed = 0;
+                        // Reset rotation speed value.
                         currentRotationSpeed = 0;
 
                         // Make sure to disable the scrape lights.
@@ -587,14 +579,8 @@ namespace Locker.MonoBehaviours
                         break;
 
                     case LockerState.Chasing:
-                        if (UseNavmesh)
-                        {
-                            // Experimental moving towards a position via nav mesh.
-                            SetDestinationToPosition(targetPosition);
-                        }
-
-                        // Make sure we reset the last position value.
-                        lastPosition = Vector3.zero;
+                        // Initiate moving to our destination.
+                        SetDestinationToPosition(targetPosition);
 
                         // Loop the chase audio.
                         audioSource.pitch = 1;
@@ -687,19 +673,7 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        public class getVisiblePlayerWithLightResult
-        {
-            public bool Found;
-            public Vector3 Position;
-
-            public getVisiblePlayerWithLightResult(bool found, Vector3 position)
-            {
-                Found = found;
-                Position = position;
-            }
-        }
-
-        private getVisiblePlayerWithLightResult getVisiblePlayerWithLight()
+        private bool isLocalPlayerClosestWithLight()
         {
             // Let's get the player closest to us with a light equipped or flashlight pocketed.
             PlayerControllerB closestPlayerWithLight = null;
@@ -713,7 +687,7 @@ namespace Locker.MonoBehaviours
             if (visiblePlayers == null || visiblePlayers.Length == 0)
             {
                 // We can exit out of this case early.
-                return new getVisiblePlayerWithLightResult(false, Vector3.zero);
+                return false;
             }
 
             foreach (PlayerControllerB player in visiblePlayers)
@@ -792,110 +766,135 @@ namespace Locker.MonoBehaviours
             // Check if a player was found after our checks.
             if (closestPlayerWithLight != null)
             {
-                return new getVisiblePlayerWithLightResult(
-                    true,
-                    closestPlayerWithLight.transform.position
-                );
+                if (closestPlayerWithLight == StartOfRound.Instance.localPlayerController)
+                {
+                    return true;
+                }
             }
-            else
-            {
-                return new getVisiblePlayerWithLightResult(false, Vector3.zero);
-            }
+
+            return false;
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void TargetServerRpc(Vector3 position)
+        public void TargetServerRpc(ulong clientId, Vector3 position)
         {
-            TargetClientRpc(position);
+            TargetClientRpc(clientId, position);
         }
 
         [ClientRpc]
-        public void TargetClientRpc(Vector3 position)
+        public void TargetClientRpc(ulong clientId, Vector3 position)
         {
-            // This is the only real function that requires networking syncing as it causes all state and animation changes.
-            if (
-                Mathf.Abs(position.y - transform.position.y) > 3
-                || Mathf.Abs(position.y - transform.position.y) < 0
-            ) // Don't target entities higher or lower.
-                return;
-
-            position.y = transform.position.y; // Make sure we don't change in elevation.
-
-            // Only allowing targeting during the debug or dormant state.
-            if (State == LockerState.Dormant || State == LockerState.Debug)
+            // Make sure we haven't retargeted recently.
+            if (Time.time - lastTargetTimeframe > lastTargetTime)
             {
-                // Activate the locker and begin the attack sequence.
-                targetPosition = position;
+                // Don't target entities higher or lower.
+                if (
+                    Mathf.Abs(position.y - transform.position.y) > 3
+                    || Mathf.Abs(position.y - transform.position.y) < 0
+                )
+                    return;
 
-                // Set the target rotation.
-                targetRotation = Quaternion.LookRotation(targetPosition - transform.position);
+                if (
+                    State == LockerState.Dormant
+                    || State == LockerState.Debug
+                    || State == LockerState.Chasing && clientId == targetClientId
+                )
+                {
+                    // Make sure we don't change in elevation.
+                    position.y = transform.position.y;
 
-                // Rotate an additional 90 degree offset.
-                targetRotation *= Quaternion.Euler(Vector3.up * 90);
+                    // Set the attack destination.
+                    targetPosition = position;
 
-                SwitchState(LockerState.Activating);
-            }
-        }
-
-        [ServerRpc(RequireOwnership = false)]
-        public void RetargetServerRpc()
-        {
-            RetargetClientRpc();
-        }
-
-        [ClientRpc]
-        public void RetargetClientRpc()
-        {
-            // This function allows retargeting the previously selected player while chasing.
-            if (State == LockerState.Chasing)
-            {
-                /*
-                    if (
-                        Mathf.Abs(position.y - transform.position.y) > 3
-                        || Mathf.Abs(position.y - transform.position.y) < 0
-                    ) // Don't target entities higher or lower.
-                        // Activate the locker and begin the attack sequence.
-                        targetPosition = position;
-              
                     // Set the target rotation.
                     targetRotation = Quaternion.LookRotation(targetPosition - transform.position);
-              
+
                     // Rotate an additional 90 degree offset.
                     targetRotation *= Quaternion.Euler(Vector3.up * 90);
-              */
+
+                    // Syncronize the last target time.
+                    lastTargetTime = Time.time;
+
+                    // Store the current chase target identifier.
+                    targetClientId = clientId;
+
+                    // Only allowing targeting during the debug or dormant state.
+                    if (State == LockerState.Dormant || State == LockerState.Debug)
+                    {
+                        // Activate the enemy.
+                        SwitchState(LockerState.Activating);
+                    }
+                    else if (State == LockerState.Chasing)
+                    {
+                        // Update the nav mesh destination if we're the host.
+                        if (IsOwner)
+                        {
+                            SetDestinationToPosition(targetPosition);
+                        }
+                    }
+                }
             }
         }
 
         [ServerRpc(RequireOwnership = false)]
         public void ConsumeServerRpc(ulong clientid)
         {
+            // Stop movement.
+            targetPosition = transform.position;
+
+            // Update the nav mesh destination if we're the host.
+            if (IsOwner)
+            {
+                SetDestinationToPosition(targetPosition);
+            }
+
             ConsumeClientRpc(clientid);
         }
 
         [ClientRpc]
         public void ConsumeClientRpc(ulong id)
         {
-            // The other function that requires networking to indicate a player has died and we should play the kill animation.
-            if (State == LockerState.Chasing) // Only allow consuming during the chase state.
+            PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
+            if (StartOfRound.Instance.localPlayerController.playerClientId == id)
             {
-                PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
-                if (StartOfRound.Instance.localPlayerController.playerClientId == id)
-                {
-                    // Apply heavy bleeding.
-                    localPlayer.bleedingHeavily = true;
+                // Apply heavy bleeding.
+                localPlayer.bleedingHeavily = true;
 
-                    // Kill the player.
-                    localPlayer.KillPlayer(Vector3.zero, true, CauseOfDeath.Crushing, 1);
-                }
-
-                SwitchState(LockerState.Consuming);
+                // Kill the player.
+                localPlayer.KillPlayer(Vector3.zero, true, CauseOfDeath.Crushing, 1);
             }
+
+            SwitchState(LockerState.Consuming);
+        }
+
+        [ServerRpc(RequireOwnership = true)]
+        public void ResetServerRpc()
+        {
+            // Stop movement.
+            targetPosition = transform.position;
+
+            // Update the nav mesh destination if we're the host.
+            if (IsOwner)
+            {
+                SetDestinationToPosition(targetPosition);
+            }
+
+            ResetClientRpc();
+        }
+
+        [ClientRpc]
+        public void ResetClientRpc()
+        {
+            SwitchState(LockerState.Resetting);
         }
 
         public void PlayerScan(PlayerControllerB player)
         {
-            // Only allowing activation during the dormant state.
-            if (State == LockerState.Dormant || State == LockerState.Debug)
+            if (
+                State == LockerState.Dormant
+                || State == LockerState.Debug
+                || State == LockerState.Chasing
+            )
             {
                 float distance = Vector3.Distance(transform.position, player.transform.position);
                 if (
