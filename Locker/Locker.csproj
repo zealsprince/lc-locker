@@ -234,6 +234,7 @@
     <Compile Include="Patches\HUDManagerPatches.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utilities.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

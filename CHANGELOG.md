@@ -1,9 +1,18 @@
 
 # Changelog #
 
+## 0.12.0 ##
+
+- Add killing other enemies mid chase
+- Add exploding if destroyed / killed
+- Add screen shake to close encounter with player
+- Add destruction of doors during chases
+- Fix lights line of sight
+- Fix chasing infinitely if stuck
+
 ## 0.11.2 ##
 
-- Add video preview to readme
+- Add video preview to README.md
 
 ## 0.11.1 ##
 

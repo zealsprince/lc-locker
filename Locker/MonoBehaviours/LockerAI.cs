@@ -97,8 +97,20 @@ namespace Locker.MonoBehaviours
         // Keep track of retargeting timings to not send an abundance of RPCs.
         private float lastTargetTime;
 
+        // Keep track of the average distance travelled during a chase to avoid getting stuck infinitely.
+        private Vector3 lastChasePosition = Vector3.zero;
+        private float chaseMovementAverage = 0f;
+        private float chaseMovementAverageInitial = 100f;
+        private float chaseMovementAverageMinimum = 0.1f;
+
         // Allow retargeting only every quarter of a second (maximum 5 calls).
         private readonly float lastTargetTimeframe = .2f;
+
+        // Explosion effect parameters on death.
+        private readonly float explosionDamage = 100f;
+        private readonly float explosionMinRange = 5f;
+        private readonly float explosionMaxRange = 6f;
+        private readonly int explosionEnemyDamage = 6;
 
         [Header("Locker")]
         // Store the current state publicly so I can switch it in the inspector.
@@ -334,7 +346,6 @@ namespace Locker.MonoBehaviours
             {
                 case LockerState.Dormant:
                     // If a player is in touching range and not standing on the enemy, target them.
-
                     if (closestPlayer != null)
                     {
                         if (
@@ -343,7 +354,7 @@ namespace Locker.MonoBehaviours
                             && Vector3.Distance(
                                 closestPlayer.transform.position,
                                 transform.position
-                            ) < 1.7
+                            ) < 1.75
                         )
                         {
                             // Get the direction to the locker so we can overshoot the player's position.
@@ -459,7 +470,49 @@ namespace Locker.MonoBehaviours
                         }
                     }
 
-                    if (Vector3.Distance(transform.position, targetPosition) < 1.5f)
+                    // Get all doors in the level and check their distance to the locker while chasing.
+                    DoorLock[] doors = Object.FindObjectsOfType(typeof(DoorLock)) as DoorLock[];
+                    foreach (DoorLock door in doors)
+                        if (!door.isDoorOpened) // Ignore open doors.
+                        {
+                            if ( // Check that we're in range of a door.
+                                !door.GetComponent<Rigidbody>()
+                                && Vector3.Distance(door.transform.position, transform.position)
+                                    < 3f
+                            )
+                            {
+                                if (IsServer)
+                                {
+                                    DestroyDoorEffectsServerRpc();
+
+                                    // Yea, we're going to access some parents. So what.
+                                    Destroy(
+                                        door.transform
+                                            .parent
+                                            .transform
+                                            .parent
+                                            .transform
+                                            .parent
+                                            .gameObject
+                                    );
+                                }
+                            }
+                        }
+
+                    // Update the last movement distance change.
+                    chaseMovementAverage =
+                        (
+                            chaseMovementAverage
+                            + Vector3.Distance(lastChasePosition, transform.position)
+                        ) / 2;
+
+                    // Store our movement for the next check.
+                    lastChasePosition = transform.position;
+
+                    if (
+                        Vector3.Distance(transform.position, targetPosition) <= 0.5f
+                        || chaseMovementAverage < chaseMovementAverageMinimum
+                    )
                     {
                         ResetServerRpc();
                     }
@@ -491,13 +544,30 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        private void OnCollisionEnter(Collision collision)
+        public override void KillEnemy(bool destroy = false)
         {
+            base.KillEnemy(destroy);
+
+            if (IsServer)
+            {
+                ExplodeServerRpc();
+            }
+        }
+
+        public override void OnCollideWithEnemy(Collider other, EnemyAI enemy)
+        {
+            base.OnCollideWithEnemy(other, enemy);
+
             switch (State) // Handle collisions with entities during our chasing state.
             {
                 // Are we in our chase phase?
                 case LockerState.Chasing:
-                    // Plugin.logger.LogDebug(collision.collider.name);
+                    if (!enemy.isEnemyDead)
+                        enemy.KillEnemy();
+
+                    // If we collided with another locker destroy this one too!
+                    if (enemy.enemyType == enemyType)
+                        KillEnemy(false);
 
                     break;
 
@@ -513,13 +583,13 @@ namespace Locker.MonoBehaviours
                 // Are we in our chase phase?
                 case LockerState.Chasing:
                     // Check if what we collided with has a player controller.
-                    PlayerControllerB playerController =
+                    PlayerControllerB player =
                         collider.gameObject.GetComponent<PlayerControllerB>();
 
                     // If we collided with a player controler, consume it.
-                    if (playerController != null)
+                    if (player != null)
                     {
-                        ConsumeServerRpc(playerController.playerClientId);
+                        ConsumeServerRpc(player.playerClientId);
                     }
 
                     break;
@@ -597,6 +667,10 @@ namespace Locker.MonoBehaviours
                         // Initiate moving to our destination.
                         SetDestinationToPosition(targetPosition);
 
+                        // Set default chasing calculations.
+                        lastChasePosition = transform.position;
+                        chaseMovementAverage = chaseMovementAverageInitial;
+
                         // Loop the chase audio.
                         audioSource.pitch = 1;
                         audioSource.clip = AudioClipChase;
@@ -643,37 +717,40 @@ namespace Locker.MonoBehaviours
                             vfx.SendEvent(chaseVFXEndTrigger.name);
                         }
 
-                        if (state == LockerState.Consuming) // Activate the consume specific effects.
+                        foreach ( // Increase fear if the Locker had a close encounter.
+                            PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
                         {
-                            foreach ( // Increase fear if the player witnessed the Locker consuming someone.
-                                PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
+                            if (
+                                Vector3.Distance(transform.position, player.transform.position) < 6f
+                            )
                             {
-                                if (
-                                    Vector3.Distance(transform.position, player.transform.position)
-                                    < 5
-                                )
+                                // Apply screen shake to make the closing more scary.
+                                Utilities.ApplyLocalPlayerScreenshake(
+                                    transform.position,
+                                    4,
+                                    6f,
+                                    false
+                                );
+
+                                // Additionally jump in fear level.
+                                if (state == LockerState.Consuming)
                                 {
-                                    player.JumpToFearLevel(1);
+                                    player.JumpToFearLevel(1f);
+                                }
+                                else
+                                {
+                                    player.JumpToFearLevel(.7f);
                                 }
                             }
+                        }
 
+                        if (state == LockerState.Consuming) // Activate the consume specific effects.
+                        {
                             // Play the consuming sound effect.
                             audioSource.PlayOneShot(AudioClipConsume);
                         }
                         else
                         {
-                            foreach ( // Increase fear if the Locker had a close encounter.
-                                PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
-                            {
-                                if (
-                                    Vector3.Distance(transform.position, player.transform.position)
-                                    < 3
-                                )
-                                {
-                                    player.JumpToFearLevel(.8f);
-                                }
-                            }
-
                             // Play reset audio clip.
                             audioSource.PlayOneShot(AudioClipReset);
                         }
@@ -861,7 +938,7 @@ namespace Locker.MonoBehaviours
             targetPosition = transform.position;
 
             // Update the nav mesh destination if we're the host.
-            if (IsOwner)
+            if (IsServer)
             {
                 SetDestinationToPosition(targetPosition);
             }
@@ -892,7 +969,7 @@ namespace Locker.MonoBehaviours
             targetPosition = transform.position;
 
             // Update the nav mesh destination if we're the host.
-            if (IsOwner)
+            if (IsServer)
             {
                 SetDestinationToPosition(targetPosition);
             }
@@ -904,6 +981,38 @@ namespace Locker.MonoBehaviours
         public void ResetClientRpc()
         {
             SwitchState(LockerState.Resetting);
+        }
+
+        [ServerRpc(RequireOwnership = true)]
+        public void ExplodeServerRpc()
+        {
+            ExplodeClientRpc();
+        }
+
+        [ClientRpc]
+        public void ExplodeClientRpc()
+        {
+            Utilities.Explode(
+                transform.position,
+                explosionMinRange,
+                explosionMaxRange,
+                explosionDamage,
+                explosionEnemyDamage
+            );
+
+            Destroy(gameObject);
+        }
+
+        [ServerRpc(RequireOwnership = true)]
+        public void DestroyDoorEffectsServerRpc()
+        {
+            DestroyDoorEffectsClientRpc();
+        }
+
+        [ClientRpc]
+        public void DestroyDoorEffectsClientRpc()
+        {
+            Utilities.Explode(transform.position, 2, 4, 100, 0);
         }
 
         public void PlayerScan(PlayerControllerB player)
