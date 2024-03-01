@@ -1,5 +1,4 @@
-﻿using GameNetcodeStuff;
-using HarmonyLib;
+﻿using HarmonyLib;
 using Locker.MonoBehaviours;
 using UnityEngine;
 
@@ -10,7 +9,7 @@ namespace Locker.Patches
     {
         [HarmonyPostfix]
         [HarmonyPatch("PingScan_performed")]
-        private static void InterruptChargeItem()
+        private static void NotifyScanLockers()
         {
             // Alert Lockers that a player scanned.
             if (GameNetworkManager.Instance.localPlayerController != null)
