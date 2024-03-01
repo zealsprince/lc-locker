@@ -1,6 +1,17 @@
 
 # Changelog #
 
+## 0.13.1 ##
+
+- Fix unkillable enemies getting stuck if hit by the locker
+
+## 0.13.0 ##
+
+- Add normal map to model
+- Add more detail to the side of the model
+- Add overshooting again but only on scan and touch interactions
+- Add rotating in the direction of movement when turning corners
+
 ## 0.12.0 ##
 
 - Add killing other enemies mid chase

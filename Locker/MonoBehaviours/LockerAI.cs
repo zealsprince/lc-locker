@@ -97,6 +97,10 @@ namespace Locker.MonoBehaviours
         // Keep track of retargeting timings to not send an abundance of RPCs.
         private float lastTargetTime;
 
+        // Overshoot values for specific interactions.
+        private readonly float touchOvershoot = 1.5f;
+        private readonly float scanOvershoot = 0.5f;
+
         // Keep track of the average distance travelled during a chase to avoid getting stuck infinitely.
         private Vector3 lastChasePosition = Vector3.zero;
         private float chaseMovementAverage = 0f;
@@ -263,9 +267,11 @@ namespace Locker.MonoBehaviours
                         Time.deltaTime * 2
                     );
 
-                    // Tilt the Locker up while chasing.
+                    // Face the direction it's moving and tilt the enemy up while chasing.
                     Quaternion targetRotationChasing =
-                        targetRotation * Quaternion.Euler(Vector3.back * 8f);
+                        Quaternion.LookRotation(transform.position - lastChasePosition)
+                        * Quaternion.Euler(Vector3.up * 90)
+                        * Quaternion.Euler(Vector3.back * 8f);
 
                     transform.rotation = Quaternion.Slerp(
                         transform.rotation,
@@ -364,6 +370,7 @@ namespace Locker.MonoBehaviours
                             TargetServerRpc(
                                 closestPlayer.playerClientId,
                                 closestPlayer.transform.position
+                                    - directionToLocker.normalized * touchOvershoot
                             );
 
                             break;
@@ -385,11 +392,11 @@ namespace Locker.MonoBehaviours
                         playerScannedTimer += Time.fixedDeltaTime;
                         if (playerScannedTimer > playerScannedDuration)
                         {
+                            currentEyeColor = eyeColorScan;
+
                             // Play the ping return sound.
                             audioSource.PlayOneShot(AudioClipPing, 1.5f);
                             playerScanning.JumpToFearLevel(.2f);
-
-                            currentEyeColor = eyeColorScan;
 
                             // Get the direction to the locker so we can overshoot the player's position.
                             Vector3 directionToLocker =
@@ -398,6 +405,7 @@ namespace Locker.MonoBehaviours
                             TargetServerRpc(
                                 playerScanning.playerClientId,
                                 playerScanning.transform.position
+                                    - directionToLocker.normalized * scanOvershoot
                             );
 
                             // We hit the ping. Now reset variables.
@@ -562,8 +570,9 @@ namespace Locker.MonoBehaviours
             {
                 // Are we in our chase phase?
                 case LockerState.Chasing:
-                    if (!enemy.isEnemyDead)
-                        enemy.KillEnemy();
+                    if (enemy.enemyType.canDie)
+                        if (!enemy.isEnemyDead)
+                            enemy.KillEnemy();
 
                     // If we collided with another locker destroy this one too!
                     if (enemy.enemyType == enemyType)
@@ -717,29 +726,35 @@ namespace Locker.MonoBehaviours
                             vfx.SendEvent(chaseVFXEndTrigger.name);
                         }
 
-                        foreach ( // Increase fear if the Locker had a close encounter.
+                        foreach ( // Screen shake if the locker resets close to the player.
                             PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
                         {
-                            if (
-                                Vector3.Distance(transform.position, player.transform.position) < 6f
-                            )
+                            float distance = Vector3.Distance(
+                                transform.position,
+                                player.transform.position
+                            );
+
+                            if (distance < 7f)
                             {
                                 // Apply screen shake to make the closing more scary.
                                 Utilities.ApplyLocalPlayerScreenshake(
                                     transform.position,
                                     4,
-                                    6f,
+                                    7f,
                                     false
                                 );
 
-                                // Additionally jump in fear level.
-                                if (state == LockerState.Consuming)
+                                // Additionally jump in fear level if the player had a close encounter.
+                                if (distance < 4f)
                                 {
-                                    player.JumpToFearLevel(1f);
-                                }
-                                else
-                                {
-                                    player.JumpToFearLevel(.7f);
+                                    if (state == LockerState.Consuming)
+                                    {
+                                        player.JumpToFearLevel(1f);
+                                    }
+                                    else
+                                    {
+                                        player.JumpToFearLevel(.7f);
+                                    }
                                 }
                             }
                         }
@@ -882,13 +897,6 @@ namespace Locker.MonoBehaviours
             // Make sure we haven't retargeted recently.
             if (Time.time - lastTargetTimeframe > lastTargetTime)
             {
-                // Don't target entities higher or lower.
-                if (
-                    Mathf.Abs(position.y - transform.position.y) > 3
-                    || Mathf.Abs(position.y - transform.position.y) < 0
-                )
-                    return;
-
                 if (
                     State == LockerState.Dormant
                     || State == LockerState.Debug
