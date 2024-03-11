@@ -1,5 +1,5 @@
 
-<img src="https://img.shields.io/badge/version-0.13.1-0AF" /></a>
+<img src="https://img.shields.io/badge/version-1.0.0-0AF" /></a>
 <img src="https://img.shields.io/badge/lc--version-v49-000" /></a>
 
 ![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
@@ -32,16 +32,17 @@ Just like the hydrogene is not much of a threat, having it coupled with other en
 - Crouching past the locker will not alert it
 - The locker can be stood on without activating it
 - Players caught in the charge are instantly killed
-- The locker can not be killed
+- The locker can not be killed/destroyed by regular means
 - The locker can kill enemies while chasing
 - The locker can crush and destroy doors while chasing
 - Crashing two lockers together will cause an explosion
+- The locker has a chance to reactivate after a chase and close in on the closest player - the chance of this happening is 50% by default and can be configured
 
 </details>
 
 ## To-do ##
 
-- Add spawn rarity with specification by level
+- Make Locker material not visible in pure darkness
 
 ## Suggestions ##
 

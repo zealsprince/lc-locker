@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using GameNetcodeStuff;
-using LethalLib.Modules;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.VFX;
@@ -15,8 +14,9 @@ namespace Locker.MonoBehaviours
             Dormant = 1,
             Activating = 2,
             Chasing = 3,
-            Resetting = 4,
-            Consuming = 5,
+            Reactivating = 4,
+            Resetting = 5,
+            Consuming = 6,
         }
 
         public static readonly int CreatureID = 176;
@@ -76,6 +76,9 @@ namespace Locker.MonoBehaviours
         // Duration before the locker begins rotating towards the target.
         private readonly float activationSpinWindup = 0.45f;
 
+        private float reactivationTimer = 0f;
+        private readonly float reactivationDuration = 1f;
+
         // Track the duration between finishing a chase and consuming a player.
         private float consumeTimer = 0f;
         private readonly float consumeDuration = 2.2f;
@@ -98,8 +101,9 @@ namespace Locker.MonoBehaviours
         private float lastTargetTime;
 
         // Overshoot values for specific interactions.
-        private readonly float touchOvershoot = 1.5f;
-        private readonly float scanOvershoot = 0.5f;
+        private readonly float touchOvershoot = 1.75f;
+        private readonly float scanOvershoot = 1f;
+        private readonly float reactivationOvershoot = 1.25f;
 
         // Keep track of the average distance travelled during a chase to avoid getting stuck infinitely.
         private Vector3 lastChasePosition = Vector3.zero;
@@ -124,6 +128,7 @@ namespace Locker.MonoBehaviours
         public AudioClip AudioClipPing;
         public AudioClip AudioClipActivate;
         public AudioClip AudioClipChase;
+        public AudioClip AudioClipReactivate;
         public AudioClip AudioClipReset;
         public AudioClip AudioClipConsume;
 
@@ -267,17 +272,21 @@ namespace Locker.MonoBehaviours
                         Time.deltaTime * 2
                     );
 
-                    // Face the direction it's moving and tilt the enemy up while chasing.
-                    Quaternion targetRotationChasing =
-                        Quaternion.LookRotation(transform.position - lastChasePosition)
-                        * Quaternion.Euler(Vector3.up * 90)
-                        * Quaternion.Euler(Vector3.back * 8f);
+                    // Make sure we moved.
+                    if (transform.position != lastChasePosition)
+                    {
+                        // Face the direction it's moving and tilt the enemy up while chasing.
+                        Quaternion targetRotationChasing =
+                            Quaternion.LookRotation(transform.position - lastChasePosition)
+                            * Quaternion.Euler(Vector3.up * 90)
+                            * Quaternion.Euler(Vector3.back * 8f);
 
-                    transform.rotation = Quaternion.Slerp(
-                        transform.rotation,
-                        targetRotationChasing,
-                        Time.deltaTime * 4
-                    );
+                        transform.rotation = Quaternion.Slerp(
+                            transform.rotation,
+                            targetRotationChasing,
+                            Time.deltaTime * 4
+                        );
+                    }
 
                     // Fade in our internal lights quickly.
                     internalLight.intensity = Mathf.Lerp(
@@ -298,6 +307,22 @@ namespace Locker.MonoBehaviours
 
                     break;
 
+                case LockerState.Reactivating:
+                    // Increase the rotation speed over time.
+                    currentRotationSpeed = Mathf.Lerp(
+                        currentRotationSpeed,
+                        maxRotationSpeed,
+                        Time.deltaTime / Mathf.Abs(maxRotationSpeed - currentRotationSpeed)
+                    );
+
+                    transform.rotation = Quaternion.Slerp(
+                        transform.rotation,
+                        targetRotation,
+                        Time.deltaTime * currentRotationSpeed * 6
+                    );
+
+                    break;
+
                 case LockerState.Resetting:
                 case LockerState.Consuming:
                     if (consumeTimer > consumeBloodWindup && !consumeBloodTriggered)
@@ -315,7 +340,7 @@ namespace Locker.MonoBehaviours
                     transform.rotation = Quaternion.Slerp(
                         transform.rotation,
                         targetRotation,
-                        Time.deltaTime * 10
+                        Time.deltaTime * 8
                     );
 
                     currentEyeColor = Color.Lerp(currentEyeColor, eyeColorChase, Time.deltaTime);
@@ -345,7 +370,16 @@ namespace Locker.MonoBehaviours
 
         private void FixedUpdate()
         {
-            PlayerControllerB closestPlayer = GetClosestPlayer(false, true, true);
+            PlayerControllerB closestPlayer = null;
+            try
+            {
+                closestPlayer = GetClosestPlayer(false, true, true);
+            }
+            catch (System.Exception ex)
+            {
+                // Some times the get closest player function throws a null pointer...
+                if (ex is System.NullReferenceException) { }
+            }
 
             // Handle logic and required state changes.
             switch (State)
@@ -395,7 +429,10 @@ namespace Locker.MonoBehaviours
                             currentEyeColor = eyeColorScan;
 
                             // Play the ping return sound.
-                            audioSource.PlayOneShot(AudioClipPing, 1.5f);
+                            audioSource.PlayOneShot(
+                                AudioClipPing,
+                                1.5f * Config.LockerVolumeAdjustment.Value
+                            );
                             playerScanning.JumpToFearLevel(.2f);
 
                             // Get the direction to the locker so we can overshoot the player's position.
@@ -443,7 +480,10 @@ namespace Locker.MonoBehaviours
                         if (playerScannedTimer > playerScannedDuration)
                         {
                             // Play the ping return sound.
-                            audioSource.PlayOneShot(AudioClipPing, 1.5f);
+                            audioSource.PlayOneShot(
+                                AudioClipPing,
+                                1.5f * Config.LockerVolumeAdjustment.Value
+                            );
                             playerScanning.JumpToFearLevel(.5f);
 
                             currentEyeColor = eyeColorScan;
@@ -480,7 +520,9 @@ namespace Locker.MonoBehaviours
 
                     // Get all doors in the level and check their distance to the locker while chasing.
                     DoorLock[] doors = Object.FindObjectsOfType(typeof(DoorLock)) as DoorLock[];
+
                     foreach (DoorLock door in doors)
+                    {
                         if (!door.isDoorOpened) // Ignore open doors.
                         {
                             if ( // Check that we're in range of a door.
@@ -493,19 +535,11 @@ namespace Locker.MonoBehaviours
                                 {
                                     DestroyDoorEffectsServerRpc();
 
-                                    // Yea, we're going to access some parents. So what.
-                                    Destroy(
-                                        door.transform
-                                            .parent
-                                            .transform
-                                            .parent
-                                            .transform
-                                            .parent
-                                            .gameObject
-                                    );
+                                    Destroy(door.transform.parent.gameObject);
                                 }
                             }
                         }
+                    }
 
                     // Update the last movement distance change.
                     chaseMovementAverage =
@@ -522,7 +556,48 @@ namespace Locker.MonoBehaviours
                         || chaseMovementAverage < chaseMovementAverageMinimum
                     )
                     {
-                        ResetServerRpc();
+                        // Make sure the server decides whether to rechase or reset.
+                        if (IsServer)
+                        {
+                            // Possibly trigger another lunge at the closest visible player.
+                            if (
+                                Random.Range(0f, 100f)
+                                < Config.LockerMechanicsReactivationChance.Value
+                            )
+                            {
+                                ReactivateServerRpc();
+                            }
+                            else
+                            {
+                                ResetServerRpc();
+                            }
+                        }
+                    }
+
+                    break;
+
+                case LockerState.Reactivating:
+                    reactivationTimer += Time.fixedDeltaTime;
+
+                    if (reactivationTimer > reactivationDuration)
+                    {
+                        PlayerControllerB player = GetClosestPlayer(true);
+                        if (player)
+                        {
+                            // Get the direction to the locker so we can overshoot the player's position.
+                            Vector3 directionToLocker =
+                                transform.position - player.transform.position;
+
+                            TargetServerRpc(
+                                player.playerClientId,
+                                player.transform.position
+                                    - directionToLocker.normalized * reactivationOvershoot
+                            );
+                        }
+                        else
+                        {
+                            ResetServerRpc();
+                        }
                     }
 
                     break;
@@ -616,6 +691,7 @@ namespace Locker.MonoBehaviours
             {
                 // Reset timers.
                 activationTimer = 0;
+                reactivationTimer = 0;
                 consumeTimer = 0;
                 resetTimer = 0;
 
@@ -666,7 +742,10 @@ namespace Locker.MonoBehaviours
 
                     case LockerState.Activating:
                         // Loop the chase audio.
-                        audioSource.PlayOneShot(AudioClipActivate);
+                        audioSource.PlayOneShot(
+                            AudioClipActivate,
+                            Config.LockerVolumeAdjustment.Value
+                        );
 
                         animationController.SetTrigger("Activate");
 
@@ -684,6 +763,7 @@ namespace Locker.MonoBehaviours
                         audioSource.pitch = 1;
                         audioSource.clip = AudioClipChase;
                         audioSource.loop = true;
+                        audioSource.volume = Config.LockerVolumeAdjustment.Value;
                         audioSource.Play();
 
                         // Flip open the doors for the chase to begin.
@@ -707,15 +787,19 @@ namespace Locker.MonoBehaviours
 
                         break;
 
+                    case LockerState.Reactivating:
                     case LockerState.Resetting:
                     case LockerState.Consuming:
+                        // Reset rotation speed value.
+                        currentRotationSpeed = 0;
+
                         // Stop the previous looping chase audio.
                         audioSource.Stop();
                         audioSource.loop = false;
 
                         // Tilt the Locker forward on stopping.
                         transform.rotation =
-                            targetRotation * Quaternion.Euler(Vector3.forward * 20f);
+                            transform.rotation * Quaternion.Euler(Vector3.forward * 10f);
 
                         animationController.SetBool("Chasing", false);
                         animationController.SetTrigger("CloseDoors");
@@ -726,9 +810,10 @@ namespace Locker.MonoBehaviours
                             vfx.SendEvent(chaseVFXEndTrigger.name);
                         }
 
-                        foreach ( // Screen shake if the locker resets close to the player.
-                            PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
+                        if (StartOfRound.Instance != null)
                         {
+                            // Make sure we don't perform this check for every player.
+                            PlayerControllerB player = StartOfRound.Instance.localPlayerController;
                             float distance = Vector3.Distance(
                                 transform.position,
                                 player.transform.position
@@ -762,12 +847,26 @@ namespace Locker.MonoBehaviours
                         if (state == LockerState.Consuming) // Activate the consume specific effects.
                         {
                             // Play the consuming sound effect.
-                            audioSource.PlayOneShot(AudioClipConsume);
+                            audioSource.PlayOneShot(
+                                AudioClipConsume,
+                                Config.LockerVolumeAdjustment.Value
+                            );
+                        }
+                        else if (state == LockerState.Reactivating)
+                        {
+                            // Play reactivation audio clip.
+                            audioSource.PlayOneShot(
+                                AudioClipReactivate,
+                                Config.LockerVolumeAdjustment.Value
+                            );
                         }
                         else
                         {
                             // Play reset audio clip.
-                            audioSource.PlayOneShot(AudioClipReset);
+                            audioSource.PlayOneShot(
+                                AudioClipReset,
+                                Config.LockerVolumeAdjustment.Value
+                            );
                         }
 
                         break;
@@ -885,6 +984,41 @@ namespace Locker.MonoBehaviours
             return false;
         }
 
+        public PlayerControllerB GetClosestVisiblePlayer()
+        {
+            // Make sure we get players only in a valid radius around us where they can shine on the enemy.
+            PlayerControllerB[] visiblePlayers = GetAllPlayersInLineOfSight(360, 30);
+
+            // Get the closest visible player.
+            float closestDistance = Mathf.Infinity;
+            PlayerControllerB closestPlayer = null;
+
+            if (visiblePlayers != null)
+            {
+                if (visiblePlayers.Length > 0)
+                {
+                    foreach (PlayerControllerB player in visiblePlayers)
+                    {
+                        float distance = Vector3.Distance(
+                            transform.position,
+                            player.transform.position
+                        );
+                        if (distance < closestDistance)
+                        {
+                            closestDistance = distance;
+                            closestPlayer = player;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                return null;
+            }
+
+            return closestPlayer;
+        }
+
         [ServerRpc(RequireOwnership = false)]
         public void TargetServerRpc(ulong clientId, Vector3 position)
         {
@@ -901,6 +1035,7 @@ namespace Locker.MonoBehaviours
                     State == LockerState.Dormant
                     || State == LockerState.Debug
                     || State == LockerState.Chasing && clientId == targetClientId
+                    || State == LockerState.Reactivating
                 )
                 {
                     // Make sure we don't change in elevation.
@@ -927,16 +1062,57 @@ namespace Locker.MonoBehaviours
                         // Activate the enemy.
                         SwitchState(LockerState.Activating);
                     }
-                    else if (State == LockerState.Chasing)
+                    else if (State == LockerState.Chasing || State == LockerState.Reactivating)
                     {
                         // Update the nav mesh destination if we're the host.
                         if (IsOwner)
                         {
-                            SetDestinationToPosition(targetPosition);
+                            SetDestinationToPosition(targetPosition, true);
+                        }
+
+                        // Make sure we go into another chase from the reactivation state.
+                        if (State == LockerState.Reactivating)
+                        {
+                            SwitchState(LockerState.Chasing);
                         }
                     }
                 }
             }
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void ReactivateServerRpc()
+        {
+            // Stop movement.
+            targetPosition = transform.position;
+
+            // Update the nav mesh destination if we're the host.
+            if (IsServer)
+            {
+                SetDestinationToPosition(targetPosition);
+            }
+
+            ReactivateClientRpc();
+        }
+
+        [ClientRpc]
+        public void ReactivateClientRpc()
+        {
+            PlayerControllerB closestPlayer = GetClosestVisiblePlayer();
+            if (closestPlayer != null)
+            {
+                // Reset the current rotation speed so that we can step it up for the reactivation.
+                currentRotationSpeed = 0;
+
+                targetRotation = Quaternion.LookRotation(
+                    closestPlayer.transform.position - transform.position
+                );
+
+                // Rotate by 90 degrees so we're facing the right way.
+                targetRotation *= Quaternion.Euler(Vector3.up * 90);
+            }
+
+            SwitchState(LockerState.Reactivating);
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -970,7 +1146,7 @@ namespace Locker.MonoBehaviours
             SwitchState(LockerState.Consuming);
         }
 
-        [ServerRpc(RequireOwnership = true)]
+        [ServerRpc(RequireOwnership = false)]
         public void ResetServerRpc()
         {
             // Stop movement.
@@ -1033,10 +1209,12 @@ namespace Locker.MonoBehaviours
             {
                 float distance = Vector3.Distance(transform.position, player.transform.position);
                 if (
-                    distance < 90 // Make a raycast to the player checking if they're visible.
+                    // Make a raycast to the player and check that we didn't hit our room mask.
+                    // We adjust the linecast slightly to the side to avoid thin obstacles and not check from the ground.
+                    distance < 90
                     && !Physics.Linecast(
-                        transform.position,
-                        player.transform.position,
+                        transform.position + Vector3.up * 2 + Vector3.right * .2f,
+                        player.transform.position + Vector3.up * 2 + Vector3.right * .2f,
                         StartOfRound.Instance.collidersAndRoomMask
                     )
                 )
