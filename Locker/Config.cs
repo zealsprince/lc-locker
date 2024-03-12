@@ -19,7 +19,7 @@ namespace Locker
                 "LockerMechanicsReactivationChance",
                 50f,
                 new ConfigDescription(
-                    "Chance for the Locker to reactivate after a chase and begin another lunge at the closest player (rolls a value 0-100 and if above the given value will reactivate)"
+                    "Chance for the Locker to reactivate after a chase and begin another lunge at the closest player (rolls a value 0-100 and if below the given value will reactivate)"
                 )
             );
 

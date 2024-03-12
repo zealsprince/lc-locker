@@ -1,6 +1,11 @@
 
 # Changelog #
 
+## 1.1.0 ##
+
+- Add corpse deletion behavior in line with the consume animation
+- Fix reactivating for another chase if not moved during last
+
 ## 1.0.0 ##
 
 - Add spawn configuration options
@@ -9,12 +14,13 @@
 - Adjust navigation checks to make movement more reliable
 - Add new post-chase mechanic to make chases more dynamic and dangerous
 - Fix doors on custom levels not destroying causing infinite explosions
-- Fix fear effect triggering on all player on death
+- Fix fear effect triggering on all players on death
 - Slightly adjust scanner linecast to avoid thin obstacles
 - Confirmed compatibility on the following custom interiors
     + Scoopy's Variety Mod: Dungeon
     + Scoopy's Variety Mod: Sewer
     + Dantors Mental Hospital
+    + MoreInteriors: Bunker
 
 ## 0.13.1 ##
 

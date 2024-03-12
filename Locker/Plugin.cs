@@ -17,7 +17,7 @@ namespace Locker
     {
         public const string ModGUID = "com.zealsprince.locker";
         public const string ModName = "Locker";
-        public const string ModVersion = "1.0.0";
+        public const string ModVersion = "1.1.0";
 
         // These need to be lowercase because we're passing through the protected properties.
         public static ManualLogSource logger;
@@ -25,7 +25,7 @@ namespace Locker
 
         private readonly Harmony harmony = new Harmony(ModGUID);
 
-        private void Awake()
+        public void Awake()
         {
             logger = Logger;
             config = Config;
@@ -120,9 +120,7 @@ namespace Locker
                             || ex is OverflowException
                         )
                         {
-                            logger.LogError(
-                                $"Failed to parse level/moon weight value: {ex.ToString()}"
-                            );
+                            logger.LogError($"Failed to parse level/moon weight value: {ex}");
                         }
 
                         continue;
@@ -184,7 +182,10 @@ namespace Locker
                     }
                 }
             }
-            catch (Exception e) { }
+            catch (Exception e)
+            {
+                logger.LogError(e);
+            }
 
             harmony.PatchAll();
         }

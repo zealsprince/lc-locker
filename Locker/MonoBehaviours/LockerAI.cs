@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using GameNetcodeStuff;
 using Unity.Netcode;
 using UnityEngine;
@@ -59,7 +60,6 @@ namespace Locker.MonoBehaviours
         // Store the current target position, rotation and client.
         private Vector3 targetPosition;
         private Quaternion targetRotation;
-        private ulong targetClientId;
 
         // Momentary rotational force of the enemy when targeting.
         private float currentRotationSpeed = 0f;
@@ -108,8 +108,8 @@ namespace Locker.MonoBehaviours
         // Keep track of the average distance travelled during a chase to avoid getting stuck infinitely.
         private Vector3 lastChasePosition = Vector3.zero;
         private float chaseMovementAverage = 0f;
-        private float chaseMovementAverageInitial = 100f;
-        private float chaseMovementAverageMinimum = 0.1f;
+        private readonly float chaseMovementAverageInitial = 100f;
+        private readonly float chaseMovementAverageMinimum = 0.1f;
 
         // Allow retargeting only every quarter of a second (maximum 5 calls).
         private readonly float lastTargetTimeframe = .2f;
@@ -368,7 +368,7 @@ namespace Locker.MonoBehaviours
             eyeMaterial.SetColor("_EmissiveColor", currentEyeColor * currentEyeIntensity);
         }
 
-        private void FixedUpdate()
+        public void FixedUpdate()
         {
             PlayerControllerB closestPlayer = null;
             try
@@ -394,7 +394,7 @@ namespace Locker.MonoBehaviours
                             && Vector3.Distance(
                                 closestPlayer.transform.position,
                                 transform.position
-                            ) < 1.75
+                            ) < 1.5
                         )
                         {
                             // Get the direction to the locker so we can overshoot the player's position.
@@ -412,7 +412,7 @@ namespace Locker.MonoBehaviours
                     }
 
                     // Commence a chase if the player is holding a light source or pointing a flashlight.
-                    if (isLocalPlayerClosestWithLight())
+                    if (IsLocalPlayerClosestWithLight())
                     {
                         TargetServerRpc(
                             StartOfRound.Instance.localPlayerController.playerClientId,
@@ -465,7 +465,7 @@ namespace Locker.MonoBehaviours
 
                 case LockerState.Chasing:
                     // Commence a chase if the player is holding a light source or pointing a flashlight.
-                    if (isLocalPlayerClosestWithLight())
+                    if (IsLocalPlayerClosestWithLight())
                     {
                         TargetServerRpc(
                             StartOfRound.Instance.localPlayerController.playerClientId,
@@ -552,12 +552,11 @@ namespace Locker.MonoBehaviours
                     lastChasePosition = transform.position;
 
                     if (
-                        Vector3.Distance(transform.position, targetPosition) <= 0.5f
+                        IsServer && Vector3.Distance(transform.position, targetPosition) <= 0.5f
                         || chaseMovementAverage < chaseMovementAverageMinimum
                     )
                     {
-                        // Make sure the server decides whether to rechase or reset.
-                        if (IsServer)
+                        if (chaseMovementAverage > chaseMovementAverageMinimum)
                         {
                             // Possibly trigger another lunge at the closest visible player.
                             if (
@@ -566,12 +565,12 @@ namespace Locker.MonoBehaviours
                             )
                             {
                                 ReactivateServerRpc();
-                            }
-                            else
-                            {
-                                ResetServerRpc();
+
+                                break;
                             }
                         }
+
+                        ResetServerRpc();
                     }
 
                     break;
@@ -660,7 +659,7 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        private void OnTriggerEnter(Collider collider)
+        public void OnTriggerEnter(Collider collider)
         {
             switch (State) // Handle collisions with a player during our chasing state.
             {
@@ -753,7 +752,7 @@ namespace Locker.MonoBehaviours
 
                     case LockerState.Chasing:
                         // Initiate moving to our destination.
-                        SetDestinationToPosition(targetPosition);
+                        SetDestinationToPosition(targetPosition, true);
 
                         // Set default chasing calculations.
                         lastChasePosition = transform.position;
@@ -879,7 +878,7 @@ namespace Locker.MonoBehaviours
             }
         }
 
-        private bool isLocalPlayerClosestWithLight()
+        private bool IsLocalPlayerClosestWithLight()
         {
             // Why do all the effort of checking for all players and then just focus on the local one?
             // -- For some reason I can't check if other players have an item active unless it's the local one.
@@ -1034,7 +1033,7 @@ namespace Locker.MonoBehaviours
                 if (
                     State == LockerState.Dormant
                     || State == LockerState.Debug
-                    || State == LockerState.Chasing && clientId == targetClientId
+                    || State == LockerState.Chasing && clientId == targetPlayer.playerClientId
                     || State == LockerState.Reactivating
                 )
                 {
@@ -1054,7 +1053,7 @@ namespace Locker.MonoBehaviours
                     lastTargetTime = Time.time;
 
                     // Store the current chase target identifier.
-                    targetClientId = clientId;
+                    targetPlayer = StartOfRound.Instance.allPlayerScripts[clientId];
 
                     // Only allowing targeting during the debug or dormant state.
                     if (State == LockerState.Dormant || State == LockerState.Debug)
@@ -1067,7 +1066,7 @@ namespace Locker.MonoBehaviours
                         // Update the nav mesh destination if we're the host.
                         if (IsOwner)
                         {
-                            SetDestinationToPosition(targetPosition, true);
+                            SetDestinationToPosition(targetPosition);
                         }
 
                         // Make sure we go into another chase from the reactivation state.
@@ -1133,15 +1132,8 @@ namespace Locker.MonoBehaviours
         [ClientRpc]
         public void ConsumeClientRpc(ulong id)
         {
-            PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
-            if (StartOfRound.Instance.localPlayerController.playerClientId == id)
-            {
-                // Apply heavy bleeding.
-                localPlayer.bleedingHeavily = true;
-
-                // Kill the player.
-                localPlayer.KillPlayer(Vector3.zero, true, CauseOfDeath.Crushing, 1);
-            }
+            // Kill the player. Need to wait for different actions for this to work.
+            ((MonoBehaviour)this).StartCoroutine(KillPlayer(id));
 
             SwitchState(LockerState.Consuming);
         }
@@ -1199,6 +1191,57 @@ namespace Locker.MonoBehaviours
             Utilities.Explode(transform.position, 2, 4, 100, 0);
         }
 
+        public IEnumerator KillPlayer(ulong id)
+        {
+            PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[id];
+            if (player != null)
+            {
+                // Apply heavy bleeding.
+                player.bleedingHeavily = true;
+
+                // Delay for bleeding.
+                yield return new WaitForSeconds(0.1f);
+
+                // Kill the player.
+                player.KillPlayer(Vector3.zero, true, CauseOfDeath.Crushing, 1);
+
+                // Attach the body to the Locker.
+
+                float startTime = Time.timeSinceLevelLoad;
+
+                // Wait until the body is available or it's been 3 seconds to fail out.
+                yield return new WaitUntil(
+                    () => player.deadBody != null || Time.timeSinceLevelLoad - startTime > 3f
+                );
+
+                if (player.deadBody != null)
+                {
+                    player.deadBody.attachedTo = eye.transform;
+                    player.deadBody.attachedLimb = player.deadBody.bodyParts[5];
+                    player.deadBody.matchPositionExactly = true;
+                }
+
+                // Delay for removing/disabling the body.
+                yield return new WaitUntil(
+                    () => Time.timeSinceLevelLoad - startTime > consumeDuration * 0.75
+                );
+
+                if (player.deadBody != null)
+                {
+                    player.deadBody.attachedTo = null;
+                    player.deadBody.attachedLimb = null;
+                    player.deadBody.matchPositionExactly = false;
+
+                    // Disable the body.
+                    player.deadBody.gameObject.SetActive(false);
+
+                    player.deadBody = null;
+                }
+            }
+
+            yield break;
+        }
+
         public void PlayerScan(PlayerControllerB player)
         {
             if (
@@ -1208,6 +1251,14 @@ namespace Locker.MonoBehaviours
             )
             {
                 float distance = Vector3.Distance(transform.position, player.transform.position);
+
+                // Disallow scanning on top of the Locker triggering it.
+                if (
+                    distance < 2
+                    && Mathf.Abs(player.transform.position.y - transform.position.y) + 2 > 2
+                )
+                    return;
+
                 if (
                     // Make a raycast to the player and check that we didn't hit our room mask.
                     // We adjust the linecast slightly to the side to avoid thin obstacles and not check from the ground.
