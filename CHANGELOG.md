@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.1.1 ##
+
+- Patch for v50
+
 ## 1.1.0 ##
 
 - Add corpse deletion behavior in line with the consume animation

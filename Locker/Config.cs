@@ -5,7 +5,7 @@ namespace Locker
     public class Config
     {
         public static ConfigEntry<int> LockerSpawnWeight;
-        public static ConfigEntry<int> LockerSpawnPower;
+        public static ConfigEntry<float> LockerSpawnPower;
         public static ConfigEntry<int> LockerSpawnMax;
         public static ConfigEntry<string> LockerSpawnLevelsSet;
         public static ConfigEntry<string> LockerSpawnLevelsWithWeight;
@@ -35,7 +35,7 @@ namespace Locker
             LockerSpawnPower = Plugin.config.Bind(
                 "Spawn",
                 "LockerSpawnPower",
-                1,
+                1f,
                 new ConfigDescription(
                     "What's the spawn power of a Locker? How much does it subtract from the moon power pool on spawn?"
                 )
