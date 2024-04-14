@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using GameNetcodeStuff;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.InputSystem.HID;
 using UnityEngine.VFX;
 
 namespace Locker.MonoBehaviours
@@ -195,6 +197,20 @@ namespace Locker.MonoBehaviours
         public override void DoAIInterval()
         {
             base.DoAIInterval();
+        }
+
+        public override void HitEnemy(
+            int force = 1,
+            PlayerControllerB playerWhoHit = null,
+            bool playHitSFX = false,
+            int hitID = -1
+        )
+        {
+            // Target players if they hit the enemy.
+            if (playerWhoHit != null)
+            {
+                TargetServerRpc(playerWhoHit.playerClientId, playerWhoHit.transform.position);
+            }
         }
 
         public override void Update()
@@ -531,12 +547,9 @@ namespace Locker.MonoBehaviours
                                     < 3f
                             )
                             {
-                                if (IsServer)
-                                {
-                                    DestroyDoorEffectsServerRpc();
+                                Utilities.Explode(door.transform.position, 2, 4, 100, 0);
 
-                                    Destroy(door.transform.parent.gameObject);
-                                }
+                                Destroy(door.transform.parent.gameObject);
                             }
                         }
                     }
@@ -551,26 +564,29 @@ namespace Locker.MonoBehaviours
                     // Store our movement for the next check.
                     lastChasePosition = transform.position;
 
-                    if (
-                        IsServer && Vector3.Distance(transform.position, targetPosition) <= 0.5f
-                        || chaseMovementAverage < chaseMovementAverageMinimum
-                    )
+                    if (IsServer)
                     {
-                        if (chaseMovementAverage > chaseMovementAverageMinimum)
+                        if (
+                            Vector3.Distance(transform.position, targetPosition) <= 0.5f
+                            || chaseMovementAverage < chaseMovementAverageMinimum
+                        )
                         {
-                            // Possibly trigger another lunge at the closest visible player.
-                            if (
-                                Random.Range(0f, 100f)
-                                < Config.LockerMechanicsReactivationChance.Value
-                            )
+                            if (chaseMovementAverage > chaseMovementAverageMinimum)
                             {
-                                ReactivateServerRpc();
+                                // Possibly trigger another lunge at the closest visible player.
+                                if (
+                                    Random.Range(0f, 100f)
+                                    < Config.LockerMechanicsReactivationChance.Value
+                                )
+                                {
+                                    ReactivateServerRpc();
 
-                                break;
+                                    break;
+                                }
                             }
-                        }
 
-                        ResetServerRpc();
+                            ResetServerRpc();
+                        }
                     }
 
                     break;
@@ -752,7 +768,8 @@ namespace Locker.MonoBehaviours
 
                     case LockerState.Chasing:
                         // Initiate moving to our destination.
-                        SetDestinationToPosition(targetPosition, true);
+                        if (IsServer && agent.isOnNavMesh)
+                            SetDestinationToPosition(targetPosition, true);
 
                         // Set default chasing calculations.
                         lastChasePosition = transform.position;
@@ -1064,9 +1081,9 @@ namespace Locker.MonoBehaviours
                     else if (State == LockerState.Chasing || State == LockerState.Reactivating)
                     {
                         // Update the nav mesh destination if we're the host.
-                        if (IsOwner)
+                        if (IsServer && agent.isOnNavMesh)
                         {
-                            SetDestinationToPosition(targetPosition);
+                            SetDestinationToPosition(targetPosition, true);
                         }
 
                         // Make sure we go into another chase from the reactivation state.
@@ -1086,9 +1103,9 @@ namespace Locker.MonoBehaviours
             targetPosition = transform.position;
 
             // Update the nav mesh destination if we're the host.
-            if (IsServer)
+            if (IsServer && agent.isOnNavMesh)
             {
-                SetDestinationToPosition(targetPosition);
+                SetDestinationToPosition(targetPosition, true);
             }
 
             ReactivateClientRpc();
@@ -1121,7 +1138,7 @@ namespace Locker.MonoBehaviours
             targetPosition = transform.position;
 
             // Update the nav mesh destination if we're the host.
-            if (IsServer)
+            if (IsServer && agent.isOnNavMesh)
             {
                 SetDestinationToPosition(targetPosition);
             }
@@ -1141,12 +1158,12 @@ namespace Locker.MonoBehaviours
         [ServerRpc(RequireOwnership = false)]
         public void ResetServerRpc()
         {
-            // Stop movement.
-            targetPosition = transform.position;
-
             // Update the nav mesh destination if we're the host.
-            if (IsServer)
+            if (IsServer && agent.isOnNavMesh)
             {
+                // Stop movement.
+                targetPosition = transform.position;
+
                 SetDestinationToPosition(targetPosition);
             }
 
@@ -1177,18 +1194,6 @@ namespace Locker.MonoBehaviours
             );
 
             Destroy(gameObject);
-        }
-
-        [ServerRpc(RequireOwnership = true)]
-        public void DestroyDoorEffectsServerRpc()
-        {
-            DestroyDoorEffectsClientRpc();
-        }
-
-        [ClientRpc]
-        public void DestroyDoorEffectsClientRpc()
-        {
-            Utilities.Explode(transform.position, 2, 4, 100, 0);
         }
 
         public IEnumerator KillPlayer(ulong id)

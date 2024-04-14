@@ -69,6 +69,10 @@
     <Reference Include="UnityEngine">
       <HintPath>E:\Lethal Company IDE\Lethal Company_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.AIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>E:\Lethal Company IDE\Lethal Company_Data\Managed\UnityEngine.AIModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>E:\Lethal Company IDE\Lethal Company_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
@@ -117,7 +121,7 @@
       <HintPath>E:\Lethal Company IDE\Lethal Company_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
   </ItemGroup>
-    <ItemGroup>
+  <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>E:\Lethal Company IDE\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>

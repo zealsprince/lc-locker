@@ -1,6 +1,12 @@
 
 # Changelog #
 
+## 1.1.2 ##
+
+- Add reaction to hit events
+- Fix Locker pathfinding getting stuck
+- Fix path calculation if off navmesh
+
 ## 1.1.1 ##
 
 - Patch for v50
