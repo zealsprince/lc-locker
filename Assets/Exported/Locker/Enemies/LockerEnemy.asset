@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5574bb503a8df5240bf6518267a85a17, type: 3}
+  m_Name: LockerEnemy
+  m_EditorClassIdentifier: 
+  enemyName: Locker
+  probabilityCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -0.9882088
+      outSlope: -0.9882088
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0.011791229
+      inSlope: -0.9882088
+      outSlope: -0.9882088
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spawningDisabled: 0
+  numberSpawnedFalloff:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  useNumberSpawnedFalloff: 0
+  spawnInGroupsOf: 0
+  requireNestObjectsToSpawn: 0
+  enemyPrefab: {fileID: 1733520013228918477, guid: b25c218b77bd8f94c86e4831d6d5d861,
+    type: 3}
+  PowerLevel: 0.5
+  MaxCount: 3
+  numberSpawned: 0
+  nestsSpawned: 0
+  isOutsideEnemy: 0
+  isDaytimeEnemy: 0
+  normalizedTimeInDayToLeave: 1
+  stunTimeMultiplier: 2
+  doorSpeedMultiplier: 1
+  stunGameDifficultyMultiplier: 10
+  canBeStunned: 0
+  canDie: 0
+  destroyOnDeath: 0
+  canSeeThroughFog: 0
+  pushPlayerForce: 0.16
+  pushPlayerDistance: 1.26
+  SizeLimit: 0
+  timeToPlayAudio: 15
+  loudnessMultiplier: 1
+  overrideVentSFX: {fileID: 0}
+  nestSpawnPrefab: {fileID: 0}
+  nestSpawnPrefabWidth: 2
+  useMinEnemyThresholdForNest: 0
+  minEnemiesToSpawnNest: 0
+  hitBodySFX: {fileID: 0}
+  hitEnemyVoiceSFX: {fileID: 0}
+  deathSFX: {fileID: 0}
+  stunSFX: {fileID: 0}
+  miscAnimations: []
+  audioClips: []

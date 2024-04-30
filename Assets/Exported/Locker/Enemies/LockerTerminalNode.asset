@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7070428dd6665004095b25ea8327f76b, type: 3}
+  m_Name: LockerTerminalNode
+  m_EditorClassIdentifier: 
+  displayText: 'Sigurd''s danger level: 60%
+
+
+    Scientific name: Cophinus-Custodi
+
+
+    Although
+    it doesn''t hold up to the normal organic miscreations found within the company
+    records and might give you pause as to its phylum; the locker as it is referred
+    to appears to have been created from both organic and inorganic forms of matter.
+    Its strange otherworldly visage made out of an alien alloy appears to be a watcher
+    of sorts, praying on those trying to find their way.
+
+
+    It''s innate and uncanny
+    perception of both sense and awareness in itself might be a symptom of those
+    it has taken within itself to the shared grave it holds.
+
+
+    Curiously, it
+    has reacted to the most fine tuned of equipment even at long ranges. Any touch,
+    signal and light it can sense appears to engage its unstoppable hunger.
+
+
+'
+  terminalEvent: 
+  clearPreviousText: 1
+  maxCharactersToType: 35
+  buyItemIndex: -1
+  isConfirmationNode: 0
+  buyRerouteToMoon: -1
+  displayPlanetInfo: -1
+  lockedInDemo: 0
+  shipUnlockableID: -1
+  buyUnlockable: 0
+  returnFromStorage: 0
+  itemCost: -1
+  creatureFileID: 176
+  creatureName: Locker
+  storyLogFileID: -1
+  overrideOptions: 0
+  acceptAnything: 0
+  terminalOptions: []
+  playClip: {fileID: 0}
+  playSyncedClip: 2
+  displayTexture: {fileID: 0}
+  displayVideo: {fileID: 32900000, guid: b2bd044eaecf7384787c812eaf771426, type: 3}
+  loadImageSlowly: 1
+  persistentImage: 0
