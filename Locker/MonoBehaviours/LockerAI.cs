@@ -564,18 +564,18 @@ public class LockerAI : EnemyAI
 
                 foreach (DoorLock door in doors)
                 {
-                    if (!door.isDoorOpened) // Ignore open doors.
+                    // if (!door.isDoorOpened) // Ignore open doors.
+                    // {
+                    if ( // Check that we're in range of a door.
+                        !door.GetComponent<Rigidbody>()
+                        && Vector3.Distance(door.transform.position, transform.position) < 3f
+                    )
                     {
-                        if ( // Check that we're in range of a door.
-                            !door.GetComponent<Rigidbody>()
-                            && Vector3.Distance(door.transform.position, transform.position) < 3f
-                        )
-                        {
-                            Utilities.Explode(door.transform.position, 2, 4, 100, 0);
+                        Utilities.Explode(door.transform.position, 2, 4, 100, 0);
 
-                            Destroy(door.transform.parent.gameObject);
-                        }
+                        Destroy(door.transform.parent.gameObject);
                     }
+                    // }
                 }
 
                 // Update the last movement distance change.

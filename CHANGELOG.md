@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.2.1 ##
+
+- Patch for v55
+
 ## 1.2.0 ##
 
 - Rewrote state management to be mounted on the game's EnemyAI system to improve stability and mod compatibility

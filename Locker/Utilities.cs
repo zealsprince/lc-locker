@@ -111,9 +111,7 @@ namespace Locker
                         && distance < 6f
                     )
                     {
-                        componentInChildren.StartCoroutine(
-                            componentInChildren.TriggerOtherMineDelayed(componentInChildren)
-                        );
+                        componentInChildren.Detonate();
                     }
                 }
                 // Apply damage to enemies.
