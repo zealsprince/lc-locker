@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using GameNetcodeStuff;
 using Unity.Netcode;
 using UnityEngine;
@@ -36,6 +37,7 @@ public class LockerAI : EnemyAI
     private Material eyeMaterial;
     private Light internalLight;
     private List<Light> scrapeLights;
+    private DoorLock[] doors = [];
 
     // Store the scrape/chase VFXs so they can be toggled during chase.
     private VisualEffect[] visualEffects;
@@ -191,6 +193,9 @@ public class LockerAI : EnemyAI
         chaseVFXEndTrigger.name = chaseVFXEndTriggerName;
         consumeVFXBeginTrigger.name = consumeVFXBeginTriggerName;
         consumeVFXEndTrigger.name = consumeVFXEndTriggerName;
+
+        // Get all doors in the level. We use this later to check the distance of the Locker to them.
+        doors = Object.FindObjectsOfType(typeof(DoorLock)) as DoorLock[];
 
         debugLine = GetComponent<LineRenderer>();
 
@@ -559,11 +564,18 @@ public class LockerAI : EnemyAI
                     }
                 }
 
-                // Get all doors in the level and check their distance to the locker while chasing.
-                DoorLock[] doors = Object.FindObjectsOfType(typeof(DoorLock)) as DoorLock[];
-
+                // Check door's distance to the Locker while chasing.
                 foreach (DoorLock door in doors)
                 {
+                    // Make sure we don't crash in case a door got removed by another system.
+                    if (!door)
+                    {
+                        doors = doors.Where(val => val != door).ToArray();
+
+                        break;
+                    }
+
+                    // TODO: We need to figure out how to tell if a door is open.
                     // if (!door.isDoorOpened) // Ignore open doors.
                     // {
                     if ( // Check that we're in range of a door.
@@ -574,6 +586,9 @@ public class LockerAI : EnemyAI
                         Utilities.Explode(door.transform.position, 2, 4, 100, 0);
 
                         Destroy(door.transform.parent.gameObject);
+
+                        // Remove the door from our array.
+                        doors = doors.Where(val => val != door).ToArray();
                     }
                     // }
                 }

@@ -1,6 +1,11 @@
 
 # Changelog #
 
+## 1.2.2 ##
+
+- Patch for v56
+- Improve performance by only getting doors on spawn not during chase
+
 ## 1.2.1 ##
 
 - Patch for v55

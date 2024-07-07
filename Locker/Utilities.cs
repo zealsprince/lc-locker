@@ -67,7 +67,6 @@ namespace Locker
                 QueryTriggerInteraction.Collide
             );
 
-            PlayerControllerB player = null;
             for (int i = 0; i < array.Length; i++)
             {
                 float distance = Vector3.Distance(position, array[i].transform.position);
@@ -88,7 +87,8 @@ namespace Locker
                 // Damage players.
                 if (array[i].gameObject.layer == 3)
                 {
-                    player = array[i].gameObject.GetComponent<PlayerControllerB>();
+                    PlayerControllerB player = array[i]
+                        .gameObject.GetComponent<PlayerControllerB>();
                     if (player != null && player.IsOwner)
                     {
                         float damageMultiplier =
@@ -139,10 +139,8 @@ namespace Locker
             for (int j = 0; j < array.Length; j++)
             {
                 Rigidbody component = array[j].GetComponent<Rigidbody>();
-                if (component != null)
-                {
-                    component.AddExplosionForce(70f, position, 10f);
-                }
+
+                component?.AddExplosionForce(70f, position, 10f);
             }
         }
     }
