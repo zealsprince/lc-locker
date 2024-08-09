@@ -14,12 +14,10 @@ namespace Locker.Patches
             // Alert Lockers that a player scanned.
             if (GameNetworkManager.Instance.localPlayerController != null)
             {
-                LockerAI[] lockerAIs = GameObject.FindObjectsByType<LockerAI>(
-                    FindObjectsSortMode.None
-                );
-                foreach (LockerAI locker in lockerAIs)
+                foreach (LockerAI locker in LockerAI.activeLockers)
                 {
-                    locker.PlayerScan(GameNetworkManager.Instance.localPlayerController);
+                    // Make sure the Locker does in fact exist just in case something removes it and doesn't clear the list.
+                    locker?.PlayerScan(GameNetworkManager.Instance.localPlayerController);
                 }
             }
         }

@@ -138,9 +138,22 @@ public class LockerAI : EnemyAI
 
     private LineRenderer debugLine;
 
+    public static List<LockerAI> activeLockers = [];
+
+    public override void OnDestroy()
+    {
+        base.OnDestroy();
+
+        // Remove this Locker from the list of existing ones.
+        activeLockers.Remove(this);
+    }
+
     public override void Start()
     {
         base.Start();
+
+        // Add ourselves to the list of currently active Locker's.
+        activeLockers.Add(this);
 
         // Assign our components.
         audioSource = GetComponent<AudioSource>();
