@@ -17,13 +17,13 @@ namespace Locker
     {
         public const string ModGUID = "com.zealsprince.locker";
         public const string ModName = "Locker";
-        public const string ModVersion = "1.2.3";
+        public const string ModVersion = "1.2.4";
 
         // These need to be lowercase because we're passing through the protected properties.
         public static ManualLogSource logger;
         public static ConfigFile config;
 
-        private readonly Harmony harmony = new Harmony(ModGUID);
+        private readonly Harmony harmony = new(ModGUID);
 
         public void Awake()
         {
@@ -55,7 +55,7 @@ namespace Locker
             lockerEnemy.MaxCount = Locker.Config.LockerSpawnMax.Value;
 
             // Construct options and a key match result to allow clean switching over formatted strings.
-            string[] keyMatchOptions = new string[] { "all", "modded", "vanilla", "none" };
+            string[] keyMatchOptions = ["all", "modded", "vanilla", "none"];
             string keyMatchResult = keyMatchOptions.FirstOrDefault(s =>
                 new string( // Break up our lowercase string into characters and prune any that match whitespace.
                     Locker
@@ -86,16 +86,17 @@ namespace Locker
                     break;
             }
 
-            Dictionary<string, int> levelWeightOverrides = new Dictionary<string, int> { };
+            Dictionary<string, int> levelWeightOverrides = [];
 
             // Same as earlier. Break up our lowercase string into characters and prune any that match whitespace.
-            string levelWeightOverridesCleaned = new string(
-                Locker
-                    .Config.LockerSpawnLevelsWithWeight.Value.ToLower()
-                    .ToCharArray()
-                    .Where(c => !Char.IsWhiteSpace(c))
-                    .ToArray()
-            );
+            string levelWeightOverridesCleaned =
+                new(
+                    Locker
+                        .Config.LockerSpawnLevelsWithWeight.Value.ToLower()
+                        .ToCharArray()
+                        .Where(c => !Char.IsWhiteSpace(c))
+                        .ToArray()
+                );
 
             // Iterate over each level override pair.
             foreach (string levelWeightPair in levelWeightOverridesCleaned.Split(','))

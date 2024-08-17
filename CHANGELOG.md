@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.2.4 ##
+
+- Patch for v60
+
 ## 1.2.3 ##
 
 - Fix player scan searching over all GameObjects instead of just Lockers possibly causing performance issues in large levels
