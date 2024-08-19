@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.2.5 ##
+
+- Patch for v61
+
 ## 1.2.4 ##
 
 - Patch for v60
