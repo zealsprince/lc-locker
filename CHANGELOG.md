@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.2.6 ##
+
+- Bump version number to indicate v64 compatibility
+
 ## 1.2.5 ##
 
 - Patch for v61
