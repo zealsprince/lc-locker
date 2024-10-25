@@ -1,11 +1,11 @@
 {
   "name": "Locker",
-  "version_number": "1.2.6",
+  "version_number": "1.2.7",
   "website_url": "https://github.com/zealsprince/lc-locker",
   "description": "A new and unique enemy that acts as a situational threat, praying on player's perception",
   "dependencies": [
     "BepInEx-BepInExPack-5.4.2100",
     "Evaisa-HookGenPatcher-0.0.5",
-    "Evaisa-LethalLib-0.15.1"
+    "Evaisa-LethalLib-0.16.1"
   ]
 }

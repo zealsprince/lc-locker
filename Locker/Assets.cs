@@ -8,17 +8,15 @@ namespace Locker
     internal class Assets
     {
         public static AssetBundle Bundle;
-        public static Dictionary<string, GameObject> Prefabs = new Dictionary<string, GameObject>();
+        public static Dictionary<string, GameObject> Prefabs = [];
 
         // Store all the assets here so we don't have to grep the code for it.
-        public static readonly Dictionary<string, string> Manifest = new Dictionary<
-            string,
-            string
-        >()
-        {
-            { "locker", "assets/exported/locker/enemies/locker.prefab" },
-            { "lockerenemy", "assets/exported/locker/enemies/lockerenemy.asset" },
-        };
+        public static readonly Dictionary<string, string> Manifest =
+            new()
+            {
+                { "locker", "assets/exported/locker/enemies/locker.prefab" },
+                { "lockerenemy", "assets/exported/locker/enemies/lockerenemy.asset" },
+            };
 
         public enum LoadStatusCode : ushort
         {

@@ -1,6 +1,6 @@
 
-<img src="https://img.shields.io/badge/version-1.2.6-0AF" /></a>
-<img src="https://img.shields.io/badge/lc--version-v64-000" /></a>
+<img src="https://img.shields.io/badge/version-1.2.7-0AF" /></a>
+<img src="https://img.shields.io/badge/lc--version-v65-000" /></a>
 
 ![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
 
