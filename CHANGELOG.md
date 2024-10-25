@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.2.8 ##
+
+- Bump version number to indicate v66 compatibility
+
 ## 1.2.7 ##
 
 - Bump version number to indicate v65 compatibility
