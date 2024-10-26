@@ -1,6 +1,11 @@
 
 # Changelog #
 
+## 1.3.0 ##
+
+- Fix incorrect asset bundle causing errors
+- Rework blood effects
+
 ## 1.2.8 ##
 
 - Bump version number to indicate v66 compatibility

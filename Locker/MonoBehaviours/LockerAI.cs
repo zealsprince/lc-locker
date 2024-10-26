@@ -210,7 +210,7 @@ public class LockerAI : EnemyAI
         // Get all doors in the level. We use this later to check the distance of the Locker to them.
         doors = Object.FindObjectsOfType(typeof(DoorLock)) as DoorLock[];
 
-        debugLine = GetComponent<LineRenderer>();
+        debugLine = gameObject.GetComponent<LineRenderer>();
 
         // Begin the initial state.
         SwitchState(State.Dormant);
@@ -238,6 +238,11 @@ public class LockerAI : EnemyAI
         base.DoAIInterval();
         if (isEnemyDead || StartOfRound.Instance.allPlayersDead)
             return;
+
+        if (!debugLine)
+        {
+            return;
+        }
 
         if (debugEnemyAI)
         {
@@ -384,6 +389,11 @@ public class LockerAI : EnemyAI
                 break;
 
             case (int)State.Resetting:
+                // Quickly fade out the scrape lights.
+                foreach (Light light in scrapeLights)
+                {
+                    light.intensity = Mathf.Lerp(light.intensity, 0, Time.deltaTime * 10);
+                }
                 break;
 
             case (int)State.Consuming:
@@ -418,7 +428,7 @@ public class LockerAI : EnemyAI
                 // Quickly fade out the scrape lights.
                 foreach (Light light in scrapeLights)
                 {
-                    light.intensity = Mathf.Lerp(light.intensity, 0, Time.deltaTime * 8);
+                    light.intensity = Mathf.Lerp(light.intensity, 0, Time.deltaTime * 10);
                 }
                 break;
 
@@ -1255,8 +1265,8 @@ public class LockerAI : EnemyAI
             // Kill the player.
             player.KillPlayer(Vector3.zero, true, CauseOfDeath.Crushing, 1);
 
-            // Attach the body to the Locker.
-
+            // Attach the body to the Locker!
+            // First we need to get the start time for the kill to then remove the body later.
             float startTime = Time.timeSinceLevelLoad;
 
             // Wait until the body is available or it's been 3 seconds to fail out.

@@ -155,7 +155,7 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>netcode-patch "$(ProjectDir)bin\$(ProjectName).dll" "E:\Lethal Company IDE\Lethal Company_Data\Managed"
+    <PostBuildEvent>netcode-patch "$(ProjectDir)bin\$(ProjectName).dll" "E:\Lethal Company IDE\Lethal Company_Data\Managed
 
 xcopy /y "$(ProjectDir)bin\$(ProjectName).dll" "E:\Lethal Company IDE\BepInEx\plugins\zealsprince-Locker"</PostBuildEvent>
   </PropertyGroup>
