@@ -1,6 +1,12 @@
 
 # Changelog #
 
+## 1.5.0 ##
+
+- Add destruction of turrets during chases
+- Add destruction of landmines during chases
+- Slightly adjust movement turning to be more snappy
+
 ## 1.4.0 ##
 
 - Fix not being able to traverse slopes and stairs

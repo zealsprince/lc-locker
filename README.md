@@ -1,5 +1,5 @@
 
-<img src="https://img.shields.io/badge/version-1.4.0-0AF" /></a>
+<img src="https://img.shields.io/badge/version-1.5.0-0AF" /></a>
 <img src="https://img.shields.io/badge/lc--version-v66-000" /></a>
 
 ![banner](https://github.com/zealsprince/lc-locker/assets/1859270/120046ff-144a-4e17-b5fb-f973d5fc3a0f)
@@ -35,6 +35,8 @@ Just like the hydrogene is not much of a threat, having it coupled with other en
 - The locker can not be killed/destroyed by regular means
 - The locker can kill enemies while chasing
 - The locker can crush and destroy doors while chasing
+- The locker can crush and destroy turrets while chasing
+- The locker explodes mines it runs over while chasing
 - Crashing two lockers together will cause an explosion
 - The locker has a chance to reactivate after a chase and close in on the closest player - the chance of this happening is 50% by default and can be configured
 

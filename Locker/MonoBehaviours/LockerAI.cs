@@ -37,7 +37,10 @@ public class LockerAI : EnemyAI
     private Material eyeMaterial;
     private Light internalLight;
     private List<Light> scrapeLights;
+
     private DoorLock[] doors = [];
+    private Turret[] turrets = [];
+    private Landmine[] landmines = [];
 
     // Store the scrape/chase VFXs so they can be toggled during chase.
     private VisualEffect[] visualEffects;
@@ -209,6 +212,12 @@ public class LockerAI : EnemyAI
 
         // Get all doors in the level. We use this later to check the distance of the Locker to them.
         doors = Object.FindObjectsOfType(typeof(DoorLock)) as DoorLock[];
+
+        // Get all turrets in the level.
+        turrets = Object.FindObjectsOfType(typeof(Turret)) as Turret[];
+
+        // Get all landmines in the level.
+        landmines = Object.FindObjectsOfType(typeof(Landmine)) as Landmine[];
 
         debugLine = gameObject.GetComponent<LineRenderer>();
 
@@ -598,9 +607,6 @@ public class LockerAI : EnemyAI
                         break;
                     }
 
-                    // TODO: We need to figure out how to tell if a door is open.
-                    // if (!door.isDoorOpened) // Ignore open doors.
-                    // {
                     if ( // Check that we're in range of a door.
                         !door.GetComponent<Rigidbody>()
                         && Vector3.Distance(door.transform.position, transform.position) < 3f
@@ -613,7 +619,54 @@ public class LockerAI : EnemyAI
                         // Remove the door from our array.
                         doors = doors.Where(val => val != door).ToArray();
                     }
-                    // }
+                }
+
+                // Check turret's distance to the Locker while chasing and destroy them if passed.
+                foreach (Turret turret in turrets)
+                {
+                    // Looks like the given turret doesn't exist anymore. Let's reprocess the turret array.
+                    if (!turret)
+                    {
+                        turrets = turrets.Where(val => val != turret).ToArray();
+
+                        break;
+                    }
+
+                    if ( // Check that we're in range of a turret.
+                        Vector3.Distance(turret.transform.position, transform.position) < 3f
+                    )
+                    {
+                        Utilities.Explode(turret.transform.position, 2, 4, 100, 0);
+
+                        Destroy(turret.transform.parent.gameObject);
+
+                        // Remove the destroyed turret from our array.
+                        turrets = turrets.Where(val => val != turret).ToArray();
+                    }
+                }
+
+                // Check landmine's distance to the Locker while chasing and destroy them if passed.
+                foreach (Landmine landmine in landmines)
+                {
+                    // Looks like the given landmine doesn't exist anymore. Let's reprocess the landmine array.
+                    if (!landmine)
+                    {
+                        landmines = landmines.Where(val => val != landmine).ToArray();
+
+                        break;
+                    }
+
+                    if ( // Check that we're in range of a landmine.
+                        Vector3.Distance(landmine.transform.position, transform.position) < 3f
+                    )
+                    {
+                        Utilities.Explode(landmine.transform.position, 2, 4, 100, 0);
+
+                        Destroy(landmine.transform.parent.gameObject);
+
+                        // Remove the destroyed landmine from our array.
+                        landmines = landmines.Where(val => val != landmine).ToArray();
+                    }
                 }
 
                 // Update the last movement distance change.
@@ -627,7 +680,7 @@ public class LockerAI : EnemyAI
                 if (IsServer)
                 {
                     if (
-                        Vector3.Distance(transform.position, targetPosition) <= 0.5f
+                        Vector3.Distance(transform.position, targetPosition) <= 1f
                         || chaseMovementAverage < chaseMovementAverageMinimum
                     )
                     {
