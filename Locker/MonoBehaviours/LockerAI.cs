@@ -143,6 +143,49 @@ public class LockerAI : EnemyAI
 
     public static List<LockerAI> activeLockers = [];
 
+    private bool ProximitySensePlayers()
+    {
+        // If proximity sense is enabled, check if there is a player in line of sight.
+        if (Config.LockerMechanicsProximitySenseEnabled.Value)
+        {
+            PlayerControllerB closestVisblePlayer = null;
+            try
+            {
+                closestVisblePlayer = GetClosestPlayer(true, true, true);
+            }
+            catch (System.Exception ex)
+            {
+                // Some times the get closest player function throws a null pointer...
+                if (ex is System.NullReferenceException) { }
+            }
+
+            if ((closestVisblePlayer != null))
+            {
+                if (
+                    Mathf.Abs(closestVisblePlayer.transform.position.y - transform.position.y) + 2
+                        > 2
+                    && Vector3.Distance(closestVisblePlayer.transform.position, transform.position)
+                        < Config.LockerMechanicsProximitySenseDistance.Value
+                )
+                {
+                    // Get the direction to the locker so we can overshoot the proximity sensed player's position.
+                    Vector3 directionToLocker =
+                        transform.position - closestVisblePlayer.transform.position;
+
+                    TargetServerRpc(
+                        closestVisblePlayer.playerClientId,
+                        closestVisblePlayer.transform.position
+                            - directionToLocker.normalized * touchOvershoot
+                    );
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public override void OnDestroy()
     {
         base.OnDestroy();
@@ -491,6 +534,10 @@ public class LockerAI : EnemyAI
                         break;
                     }
                 }
+
+                // Handle the proximity sense feature and exit out if it was activated.
+                if (ProximitySensePlayers())
+                    break;
 
                 // Commence a chase if the player is holding a light source or pointing a flashlight.
                 if (IsLocalPlayerClosestWithLight())
@@ -1349,10 +1396,13 @@ public class LockerAI : EnemyAI
                 player.deadBody.attachedLimb = null;
                 player.deadBody.matchPositionExactly = false;
 
-                // Disable the body.
-                player.deadBody.gameObject.SetActive(false);
+                if (!Config.LockerMechanicsBodiesEnabled.Value)
+                {
+                    // Disable the body.
+                    player.deadBody.gameObject.SetActive(false);
 
-                player.deadBody = null;
+                    player.deadBody = null;
+                }
             }
         }
 

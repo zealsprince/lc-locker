@@ -4,13 +4,18 @@ namespace Locker
 {
     public class Config
     {
+        public static ConfigEntry<float> LockerMechanicsReactivationChance;
+        public static ConfigEntry<bool> LockerMechanicsBodiesEnabled;
+        public static ConfigEntry<bool> LockerMechanicsProximitySenseEnabled;
+        public static ConfigEntry<float> LockerMechanicsProximitySenseDistance;
+
         public static ConfigEntry<int> LockerSpawnWeight;
         public static ConfigEntry<float> LockerSpawnPower;
         public static ConfigEntry<int> LockerSpawnMax;
         public static ConfigEntry<string> LockerSpawnLevelsSet;
         public static ConfigEntry<string> LockerSpawnLevelsWithWeight;
+
         public static ConfigEntry<float> LockerVolumeAdjustment;
-        public static ConfigEntry<float> LockerMechanicsReactivationChance;
 
         public static void Load()
         {
@@ -20,6 +25,33 @@ namespace Locker
                 50f,
                 new ConfigDescription(
                     "Chance for the Locker to reactivate after a chase and begin another lunge at the closest player (rolls a value 0-100 and if below the given value will reactivate)"
+                )
+            );
+
+            LockerMechanicsBodiesEnabled = Plugin.config.Bind(
+                "Mechanics",
+                "LockerMechanicsBodiesEnabled",
+                false,
+                new ConfigDescription(
+                    "Should bodies fall to the ground after being killed instead of being destroyed?"
+                )
+            );
+
+            LockerMechanicsProximitySenseEnabled = Plugin.config.Bind(
+                "Mechanics",
+                "LockerMechanicsProximitySenseEnabled",
+                false,
+                new ConfigDescription(
+                    "Should the Locker automatically lunge at players in line of sight and within reach?"
+                )
+            );
+
+            LockerMechanicsProximitySenseDistance = Plugin.config.Bind(
+                "Mechanics",
+                "LockerMechanicsProximitySenseDistance",
+                8f,
+                new ConfigDescription(
+                    "Distance at which the Locker activates if proximity sense is enabled"
                 )
             );
 

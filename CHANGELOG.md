@@ -1,6 +1,12 @@
 
 # Changelog #
 
+## 1.6.0 ##
+
+- Add config option to keep bodies after a player is killed
+- Add config option to allow line-of-sight triggered lunges called "proximity sense"
+- Remove HookGenPatcher dependencies since they are already present in downstream dependencies
+
 ## 1.5.0 ##
 
 - Add destruction of turrets during chases
