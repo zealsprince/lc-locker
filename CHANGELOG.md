@@ -1,6 +1,12 @@
 
 # Changelog #
 
+## 1.4.0 ##
+
+- Fix not being able to traverse slopes and stairs
+- Generally improve player path finding
+- Slightly adjust hitboxes and speed
+
 ## 1.3.1 ##
 
 - Rebuild to fix netcode patcher issues

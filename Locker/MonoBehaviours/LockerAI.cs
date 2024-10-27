@@ -113,7 +113,7 @@ public class LockerAI : EnemyAI
     private Vector3 lastChasePosition = Vector3.zero;
     private float chaseMovementAverage = 0f;
     private readonly float chaseMovementSpeed = 30;
-    private readonly float chaseMovementAverageInitial = 100f;
+    private readonly float chaseMovementAverageInitial = 1000f;
     private readonly float chaseMovementAverageMinimum = 0.01f;
 
     // Allow retargeting only every quarter of a second (maximum 5 calls).
@@ -1103,14 +1103,14 @@ public class LockerAI : EnemyAI
                 || currentBehaviourStateIndex == (int)State.Reactivating
             )
             {
-                // Make sure we don't change in elevation.
-                position.y = transform.position.y;
-
                 // Set the attack destination.
                 targetPosition = position;
 
-                // Set the target rotation.
-                targetRotation = Quaternion.LookRotation(targetPosition - transform.position);
+                // Set the target rotation. Make sure to not change the elevation for the rotation as to avoid sloping.
+                targetRotation = Quaternion.LookRotation(
+                    new Vector3(targetPosition.x, transform.position.y, targetPosition.z)
+                        - transform.position
+                );
 
                 // Rotate an additional 90 degree offset.
                 targetRotation *= Quaternion.Euler(Vector3.up * 90);
@@ -1176,7 +1176,11 @@ public class LockerAI : EnemyAI
             currentRotationSpeed = 0;
 
             targetRotation = Quaternion.LookRotation(
-                closestPlayer.transform.position - transform.position
+                new Vector3(
+                    closestPlayer.transform.position.x,
+                    transform.position.y,
+                    closestPlayer.transform.position.z
+                ) - transform.position
             );
 
             // Rotate by 90 degrees so we're facing the right way.
