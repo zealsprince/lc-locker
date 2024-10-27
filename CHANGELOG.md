@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.3.1 ##
+
+- Rebuild to fix netcode patcher issues
+
 ## 1.3.0 ##
 
 - Fix incorrect asset bundle causing errors
