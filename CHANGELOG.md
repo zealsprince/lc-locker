@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.6.1 ##
+
+- Bump version number to indicate v69 compatibility
+
 ## 1.6.0 ##
 
 - Add config option to keep bodies after a player is killed
