@@ -1,6 +1,10 @@
 
 # Changelog #
 
+## 1.6.2 ##
+
+- Fix compatibility with v73 and rebuild with new netcode patcher
+
 ## 1.6.1 ##
 
 - Bump version number to indicate v69 compatibility
