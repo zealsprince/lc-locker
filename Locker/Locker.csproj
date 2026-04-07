@@ -152,9 +152,9 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>netcode-patch -uv 2022.3.62 -nv 1.12.0 -tv 1.0.0 "$(ProjectDir)bin\$(ProjectName).dll" "D:\Lethal Company IDE\Lethal Company_Data\Managed
+    <PostBuildEvent>netcode-patch -uv 2022.3.62 -nv 1.12.2 "$(ProjectDir)bin\$(ProjectName).dll" "E:\Windows\Lethal Company IDE\Lethal Company_Data\Managed
 
-xcopy /y "$(ProjectDir)bin\$(ProjectName).dll" "D:\Lethal Company IDE\BepInEx\plugins\zealsprince-Locker"</PostBuildEvent>
+xcopy /y "$(ProjectDir)bin\$(ProjectName).dll" "E:\Windows\Lethal Company IDE\BepInEx\plugins\zealsprince-Locker"</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PreBuildEvent>
